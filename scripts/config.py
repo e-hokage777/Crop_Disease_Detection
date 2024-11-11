@@ -17,5 +17,5 @@ BATCH_SIZE = 4
 LOGS_PATH = "../tb_logs"
 CHECKPOINT_SAVEPATH = "../checkpoints/"
 BACKBONE_PATH = os.path.join(
-    os.path.abspath(__file__), "../trained_backbones/mobilenet_v3_large=0.80.pt"
+    os.path.dirname(os.path.abspath(__file__)), "../trained_backbones/mobilenet_v3_large=0.80.pt"
 )
