@@ -15,7 +15,7 @@ class GCDDDetector(L.LightningModule):
         super().__init__()
         self.num_classes = num_classes
         self.learning_rate = learning_rate
-        self.detector = self._detector_setup()
+        self.detector = self._detector_setup(self.num_classes)
         self.training_step_losses = []
         self.map = MeanAveragePrecision(iou_type="bbox", iou_thresholds=[0.5])
 
