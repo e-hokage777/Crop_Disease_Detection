@@ -8,6 +8,7 @@ from torchvision.models.detection import (
     FasterRCNN_MobileNet_V3_Large_FPN_Weights,
 )
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+import config
 
 
 class GCDDDetector(L.LightningModule):
@@ -25,7 +26,7 @@ class GCDDDetector(L.LightningModule):
     def _detector_setup(self, num_classes):
         ## getting backbone weights
         backbone_weights = torch.load(
-            "/kaggle/input/mobilenet_v3_large_backbone_weights_gcdd/pytorch/default/1/mobilenet_v3_large_val_f1score0.76.pt",
+            config.BACKBONE_PATH,
             weights_only=True,
         )
 
