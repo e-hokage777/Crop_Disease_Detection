@@ -5,7 +5,7 @@ from utils import get_file_dir
 MIN_EPOCHS = 1
 MAX_EPOCHS = 10
 ACCELERATOR = "gpu"
-DEVICES = 2
+DEVICES = 1
 MULTI_GPU_STRATEGY="deepspeed"
 
 ## data
