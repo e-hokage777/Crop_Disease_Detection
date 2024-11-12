@@ -28,7 +28,7 @@ class DetectionDataModule(L.LightningDataModule):
         self.label_encoder = label_encoder
         self.split_ratio = split_ratio
         self.seed = seed
-        self.pin_memory = True
+        self.pin_memory = self.pin_memory
         self.persistent_workers = persistent_workers
 
     def prepare_data(self):
@@ -78,12 +78,12 @@ class DetectionDataModule(L.LightningDataModule):
 
     def val_dataloader(self):
         return DataLoader(
-            self.validation_dataset,
+            self.val_dataset,
             batch_size=self.batch_size,
             pin_memory=self.pin_memory,
             num_workers=self.num_workers,
             collate_fn=self._collate_wrapper,
-            persistent_workers=self.persisten_workers,
+            persistent_workers=self.persistent_workers,
         )
 
     def test_dataloader(self):
