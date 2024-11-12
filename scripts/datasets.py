@@ -37,6 +37,7 @@ class ImageDataset(torch.utils.data.Dataset):
         image = io.imread(img_path)
 
         target = self.targets[self.img_labels[idx]].copy()
+        
         if self.transforms:
             image = self.transforms(image)
 
@@ -78,7 +79,7 @@ class ImagePredictionDataset(torch.utils.data.Dataset):
         self.transforms = transforms
 
         df = pd.read_csv(annotations_filepath)
-        self.img_labels = self.df["Image_ID"].unique()
+        self.img_labels = df["Image_ID"].unique()
 
     def __len__(self):
         return len(self.img_labels)
