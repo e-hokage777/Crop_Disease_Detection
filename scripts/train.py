@@ -41,7 +41,7 @@ if __name__ == "__main__":
         max_epochs=config.MAX_EPOCHS,
         devices=config.DEVICES,
         callbacks=get_callbacks(),
-        fast_dev_run=True,
+        # fast_dev_run=True,
     )
 
     trainer.fit(model, data_module)
