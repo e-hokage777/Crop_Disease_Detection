@@ -5,7 +5,7 @@ from utils import get_file_dir
 MIN_EPOCHS = 1
 MAX_EPOCHS = 10
 ACCELERATOR = "gpu"
-DEVICES = 1
+DEVICES = 2
 
 ## data
 ANNOT_FILEPATH = os.path.join(get_file_dir(), "../data/Train.csv")
