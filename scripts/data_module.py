@@ -28,7 +28,7 @@ class DetectionDataModule(L.LightningDataModule):
         self.label_encoder = label_encoder
         self.split_ratio = split_ratio
         self.seed = seed
-        self.pin_memory = self.pin_memory
+        self.pin_memory = pin_memory
         self.persistent_workers = persistent_workers
 
     def prepare_data(self):
