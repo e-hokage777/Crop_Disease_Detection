@@ -6,6 +6,7 @@ MIN_EPOCHS = 1
 MAX_EPOCHS = 10
 ACCELERATOR = "gpu"
 DEVICES = 2
+MULTI_GPU_STRATEGY="deepspeed"
 
 ## data
 ANNOT_FILEPATH = os.path.join(get_file_dir(), "../data/Train.csv")
