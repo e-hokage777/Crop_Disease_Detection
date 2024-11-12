@@ -44,7 +44,7 @@ class DetectionDataModule(L.LightningDataModule):
                 target_transforms=None,
             )
 
-            generator = torch.Generator.manual_seed(self.seed)
+            generator = torch.Generator().manual_seed(self.seed)
             self.train_dataset, self.val_dataset, self.test_dataset = random_split(
                 dataset, self.split_ratio, generator=generator
             )
@@ -75,7 +75,7 @@ class DetectionDataModule(L.LightningDataModule):
             persistent_workers=self.persistent_workers,
         )
 
-    def validation_dataloader(self):
+    def val_dataloader(self):
         return DataLoader(
             self.validation_dataset,
             batch_size=self.batch_size,
