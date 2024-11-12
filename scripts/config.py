@@ -12,7 +12,7 @@ MULTI_GPU_STRATEGY="deepspeed"
 ANNOT_FILEPATH = os.path.join(get_file_dir(), "../data/Train.csv")
 PRED_ANNOT_FILEPATH = os.path.join(get_file_dir(), "../data/Test.csv")
 IMGS_PATH = os.path.join(get_file_dir(), "../data/Train.csv")
-NUM_WORKERS = 4
+NUM_WORKERS = 2
 BATCH_SIZE = 4
 
 ## others
