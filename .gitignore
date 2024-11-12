@@ -1,0 +1,6 @@
+tblogs/
+trained_backbones/
+checkpoints/
+__pycache__/
+*.pyc
+images/
