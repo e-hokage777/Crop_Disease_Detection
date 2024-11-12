@@ -70,6 +70,7 @@ class GCDDDetector(L.LightningModule):
     def on_training_epoch_end(self):
         mean_loss = torch.stack(self.training_step_losses).mean()
         self.log("loss", mean_loss)
+        self.training_step_losses = []
 
     def on_validation_epoch_end(self):
         map = self.map.compute()

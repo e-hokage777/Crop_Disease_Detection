@@ -15,7 +15,7 @@ NUM_WORKERS = 4
 BATCH_SIZE = 4
 
 ## others
-LOGS_PATH = "../tb_logs"
+LOGS_PATH = os.path.join(get_file_dir(), "../tb_logs")
 CHECKPOINT_SAVEPATH = "../checkpoints/"
 BACKBONE_PATH = os.path.join(
     get_file_dir(), "../trained_backbones/mobilenet_v3_large=0.80.pt"

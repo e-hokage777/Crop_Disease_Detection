@@ -6,6 +6,7 @@ import config
 import torch
 import os
 from utils import get_labelencoder
+from lightning.pytorch.loggers import TensorBoardLogger
 
 
 if __name__ == "__main__":
@@ -20,6 +21,9 @@ if __name__ == "__main__":
 
     num_classes = 23 + 1
     label_encoder = get_labelencoder(annot_filepath, "class")
+    
+    ## logger
+    logger = TensorBoardLogger(config.LOGS_PATH, "gcdd_v0")
 
     ## instantiation
     data_module = DetectionDataModule(
@@ -41,6 +45,7 @@ if __name__ == "__main__":
         max_epochs=config.MAX_EPOCHS,
         devices=config.DEVICES,
         callbacks=get_callbacks(),
+        logger=logger
         # fast_dev_run=True,
     )
 
