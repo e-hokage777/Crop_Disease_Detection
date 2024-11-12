@@ -70,6 +70,7 @@ class DetectionDataModule(L.LightningDataModule):
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
+            num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             collate_fn=self._collate_wrapper,
             persistent_workers=self.persistent_workers,
@@ -80,6 +81,7 @@ class DetectionDataModule(L.LightningDataModule):
             self.validation_dataset,
             batch_size=self.batch_size,
             pin_memory=self.pin_memory,
+            num_workers=self.num_workers,
             collate_fn=self._collate_wrapper,
             persistent_workers=self.persisten_workers,
         )
@@ -89,6 +91,7 @@ class DetectionDataModule(L.LightningDataModule):
             self.train_dataset,
             batch_size=self.batch_size,
             pin_memory=self.pin_memory,
+            num_workers=self.num_workers,
             collate_fn=self._collate_wrapper,
             persisten_workers=self.persistent_workers,
         )
@@ -98,6 +101,7 @@ class DetectionDataModule(L.LightningDataModule):
             self.pred_dataset,
             batch_size=self.batch_size,
             pin_memory=self.pin_memory,
+            num_workers=self.num_workers,
             collate_fn=self._collate_wrapper,
             persisten_workers=self.persistent_workers,
         )
