@@ -33,7 +33,7 @@ if __name__ == "__main__":
     )
 
     model = GCDDDetector(num_classes, learning_rate=0.001)
-    model = torch.compile(model, dynamic=True)
+    # model = torch.compile(model, dynamic=True)
 
     trainer = L.Trainer(
         accelerator=config.ACCELERATOR,
