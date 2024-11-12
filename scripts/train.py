@@ -7,6 +7,7 @@ import torch
 import os
 from utils import get_labelencoder
 from lightning.pytorch.loggers import TensorBoardLogger
+from pytorch_lightning.strategies import DeepSpeedStrategy
 
 
 if __name__ == "__main__":
@@ -41,6 +42,7 @@ if __name__ == "__main__":
 
     trainer = L.Trainer(
         accelerator=config.ACCELERATOR,
+        strategy=DeepSpeedStrategy(),
         min_epochs=config.MIN_EPOCHS,
         max_epochs=config.MAX_EPOCHS,
         devices=config.DEVICES,
