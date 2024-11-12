@@ -1,4 +1,5 @@
 import os
+from utils import get_file_dir
 
 ## training
 MIN_EPOCHS = 1
@@ -7,9 +8,9 @@ ACCELERATOR = "gpu"
 DEVICES = 1
 
 ## data
-ANNOT_FILEPATH = "../data/Train.csv"
-PRED_ANNOT_FILEPATH = "../data/Test.csv"
-IMGS_PATH = "../images"
+ANNOT_FILEPATH = os.path.join(get_file_dir(), "../data/Train.csv")
+PRED_ANNOT_FILEPATH = os.path.join(get_file_dir(), "../data/Test.csv")
+IMGS_PATH = os.path.join(get_file_dir(), "../data/Train.csv")
 NUM_WORKERS = 4
 BATCH_SIZE = 4
 
@@ -17,5 +18,5 @@ BATCH_SIZE = 4
 LOGS_PATH = "../tb_logs"
 CHECKPOINT_SAVEPATH = "../checkpoints/"
 BACKBONE_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "../trained_backbones/mobilenet_v3_large=0.80.pt"
+    get_file_dir(), "../trained_backbones/mobilenet_v3_large=0.80.pt"
 )

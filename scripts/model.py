@@ -28,6 +28,7 @@ class GCDDDetector(L.LightningModule):
         backbone_weights = torch.load(
             config.BACKBONE_PATH,
             weights_only=True,
+            map_location="cpu"
         )
 
         detector = fasterrcnn_mobilenet_v3_large_fpn(
