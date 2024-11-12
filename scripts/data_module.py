@@ -63,11 +63,11 @@ class DetectionDataModule(L.LightningDataModule):
     def _collate_wrapper(self, batch):
         images, targets = list(zip(*batch))
 
-        if self.pin_memory:
-            for i in range(len(images)):
-                images[i].pin_memory()
-                targets[i]["boxes"].pin_memory()
-                targets[i]["labels"].pin_memory()
+        # if self.pin_memory:
+        #     for i in range(len(images)):
+        #         images[i].pin_memory()
+        #         targets[i]["boxes"].pin_memory()
+        #         targets[i]["labels"].pin_memory()
 
         return images, targets
 
