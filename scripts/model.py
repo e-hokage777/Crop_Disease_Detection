@@ -72,8 +72,8 @@ class GCDDDetector(L.LightningModule):
         self.log("loss", mean_loss)
 
     def on_validation_epoch_end(self):
-        map_50 = self.map.compute()
-        self.log("map_50", map_50)
+        map = self.map.compute()
+        self.log("map_50", map["map_50"])
 
     def configure_optimizers(self):
         return SGD(
