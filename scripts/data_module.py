@@ -3,6 +3,7 @@ import pandas as pd
 from torch.utils.data import random_split, DataLoader
 from datasets import ImageDataset, ImagePredictionDataset
 import torch
+from torchvision.transforms import ToTensor
 
 
 class DetectionDataModule(L.LightningDataModule):
@@ -18,6 +19,7 @@ class DetectionDataModule(L.LightningDataModule):
         seed=42,
         pin_memory=True,
         persistent_workers=True,
+        transforms=ToTensor(),
     ):
         super().__init__()
         self.num_workers = num_workers
@@ -30,6 +32,7 @@ class DetectionDataModule(L.LightningDataModule):
         self.seed = seed
         self.pin_memory = pin_memory
         self.persistent_workers = persistent_workers
+        self.transforms = transforms
 
     def prepare_data(self):
         pass
@@ -40,7 +43,7 @@ class DetectionDataModule(L.LightningDataModule):
                 self.annotations_filepath,
                 self.imgs_path,
                 self.label_encoder,
-                transforms=None,
+                transforms=self.transforms,
                 target_transforms=None,
             )
 
@@ -52,7 +55,9 @@ class DetectionDataModule(L.LightningDataModule):
         ## for preds
         if stage == "predict":
             self.pred_dataset = ImagePredictionDataset(
-                self.pred_annotations_filepath, self.imgs_path
+                self.pred_annotations_filepath,
+                self.imgs_path,
+                transforms=self.transofrms,
             )
 
     def _collate_wrapper(self, batch):
