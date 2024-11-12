@@ -26,6 +26,7 @@ class DetectionDataModule(L.LightningDataModule):
         self.pred_annotations_filepath = pred_annotations_filepath
         self.imgs_path = imgs_path
         self.label_encoder = label_encoder
+        self.split_ratio = split_ratio
         self.seed = seed
         self.pin_memory = True
         self.persistent_workers = persistent_workers
@@ -43,7 +44,7 @@ class DetectionDataModule(L.LightningDataModule):
                 target_transforms=None,
             )
 
-            generator = torch.Generator.manual(self.seed)
+            generator = torch.Generator.manual_seed(self.seed)
             self.train_dataset, self.val_dataset, self.test_dataset = random_split(
                 dataset, self.split_ratio, generator=generator
             )
