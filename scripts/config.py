@@ -4,7 +4,7 @@ from utils import get_file_dir
 ## training
 MIN_EPOCHS = 1
 MAX_EPOCHS = 10
-ACCELERATOR = "gpu"
+ACCELERATOR = "cpu"
 DEVICES = 1
 
 ## data
