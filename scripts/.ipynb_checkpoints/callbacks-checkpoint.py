@@ -16,9 +16,9 @@ def get_callbacks(checkpoint_monitor="map_50"):
             every_n_epochs=1,
             save_top_k=1,
             save_on_train_epoch_end=False,
-            filename="epoch-{epoch:02d}_lr={lr:.5f}_map@50={map_50:.2f}",
+            filename="epoch-{epoch:02d}_lr="+str(config.LEARNING_RATE)+"_map@50={map_50:.2f}",
         )
         callbacks.append(checkpoint_callback)
-        callbacks.append(RichProgressBar())
+        # callbacks.append(RichProgressBar())
 
     return callbacks

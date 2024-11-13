@@ -36,9 +36,16 @@ if __name__ == "__main__":
         persistent_workers=config.PERSISTENT_WORKERS,
     )
 
-    model = GCDDDetector(num_classes, learning_rate=0.001)
+    if config.CHECKPOINT_LOAD_PATH:
+        model = GCDDDetector.load_from_checkpoint(config.CHECKPOINT_LOAD_PATH,
+                                                  num_classes=num_classes,
+                                                  learning_rate=config.LEARNING_RATE)
+    else:
+        model = GCDDDetector(num_classes, learning_rate=config.LEARNING_RATE)
     # model = torch.compile(model, dynamic=True)
 
+    print(f"TRAINING MODEL AT LEARNING RATE OF: {config.LEARNING_RATE}")
+    
     trainer = L.Trainer(
         accelerator=config.ACCELERATOR,
         strategy=config.MULTI_GPU_STRATEGY,
@@ -46,8 +53,7 @@ if __name__ == "__main__":
         max_epochs=config.MAX_EPOCHS,
         devices=config.DEVICES,
         callbacks=get_callbacks(),
-        logger=logger
-        # fast_dev_run=True,
+        logger=logger,
     )
 
     trainer.fit(model, data_module)
