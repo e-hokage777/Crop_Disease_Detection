@@ -7,6 +7,7 @@ import torch
 import os
 from utils import get_labelencoder
 from lightning.pytorch.loggers import TensorBoardLogger
+import sys
 
 
 if __name__ == "__main__":
@@ -34,6 +35,7 @@ if __name__ == "__main__":
         batch_size=config.BATCH_SIZE,
         num_workers=config.NUM_WORKERS,
         persistent_workers=config.PERSISTENT_WORKERS,
+        seed=config.SEED
     )
 
     if config.CHECKPOINT_LOAD_PATH:
@@ -44,7 +46,6 @@ if __name__ == "__main__":
         model = GCDDDetector(num_classes, learning_rate=config.LEARNING_RATE)
     # model = torch.compile(model, dynamic=True)
 
-    print(f"TRAINING MODEL AT LEARNING RATE OF: {config.LEARNING_RATE}")
     
     trainer = L.Trainer(
         accelerator=config.ACCELERATOR,
@@ -52,8 +53,21 @@ if __name__ == "__main__":
         min_epochs=config.MIN_EPOCHS,
         max_epochs=config.MAX_EPOCHS,
         devices=config.DEVICES,
+        precision=config.TRAIN_PRECISION,
         callbacks=get_callbacks(),
         logger=logger,
     )
 
-    trainer.fit(model, data_module)
+    ##
+    try:
+        mode = sys.argv[1]
+    except:
+        raise Exception("Please provide a system argument--train/test/validate. eg. pythong train.py [train/validate/test]")
+
+    if mode == "train":
+        print(f"TRAINING MODEL AT LEARNING RATE OF: {config.LEARNING_RATE}")
+        trainer.fit(model, data_module)
+    elif mode == "validate":
+        trainer.validate(model, data_module)
+    elif mode == "test":
+        trainer.test(model, data_module)

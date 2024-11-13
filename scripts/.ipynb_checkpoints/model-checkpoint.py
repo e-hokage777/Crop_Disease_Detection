@@ -8,7 +8,7 @@ from torchvision.models.detection import (
     FasterRCNN_MobileNet_V3_Large_FPN_Weights,
 )
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torchvision.ops import batched_nms
+from torchvision.ops import batched_nms, nms
 import config
 
 
@@ -20,6 +20,7 @@ class GCDDDetector(L.LightningModule):
         self.detector = self._detector_setup(self.num_classes)
         self.training_step_losses = []
         self.map = MeanAveragePrecision(iou_type="bbox", iou_thresholds=[0.5])
+        self.map_alt = MeanAveragePrecision(iou_type="bbox", class_metrics=True)
 
         ## saving in logs
         self.log("lr", self.learning_rate)
@@ -44,6 +45,28 @@ class GCDDDetector(L.LightningModule):
 
         return detector
 
+    ## function to filter with non-max suppression
+    def _nms(self, preds):
+        if not type(preds) == list:
+            preds = [preds]
+
+        new_preds = []
+        
+        for pred in preds:
+            boxes = pred["boxes"]
+            labels = pred["labels"]
+            scores = pred["scores"]
+
+            filtered_idxs = nms(boxes, scores, config.NMS_THRESH)
+
+            new_pred = dict()
+            new_pred["boxes"] = boxes[[filtered_idxs]]
+            new_pred["labels"] = labels[[filtered_idxs]]
+            new_pred["scores"] = scores[[filtered_idxs]]
+            new_preds.append(new_pred)
+
+        return new_preds
+
     def forward(self, x):
         if self.training:
             return self.detector(*x)
@@ -58,12 +81,14 @@ class GCDDDetector(L.LightningModule):
     def validation_step(self, batch, batch_index):
         images, targets = batch
         preds = self.forward(images)
+        preds = self._nms(preds)
         self.map.update(preds, targets)
 
     def test_step(self, batch, batch_index):
         images, targets = batch
         preds = self.forward(images)
-        self.map.update(preds, targets)
+        preds = self._nms(preds)
+        self.map_alt.update(preds, targets)
 
     def prediction_step(self, batch, batch_index):
         return self.forward(batch)
@@ -76,6 +101,9 @@ class GCDDDetector(L.LightningModule):
     def on_validation_epoch_end(self):
         map = self.map.compute()
         self.log("map_50", map["map_50"], prog_bar=True)
+
+    # def on_test_epoch_end(self):
+    #     pass
 
     def configure_optimizers(self):
         return SGD(

@@ -16,7 +16,8 @@ class ImageDataset(torch.utils.data.Dataset):
         target_transforms=None,
     ):
 
-        self.df = pd.read_csv(annotations_file)
+        # self.df = pd.read_csv(annotations_file)
+        self.df = annotations_file
         self.transforms = transforms
         self.target_transforms = target_transforms
         self.class_encoder = label_encoder

@@ -4,6 +4,7 @@ from torch.utils.data import random_split, DataLoader
 from datasets import ImageDataset, ImagePredictionDataset
 import torch
 from torchvision.transforms import ToTensor
+from sklearn.model_selection import train_test_split
 
 
 class DetectionDataModule(L.LightningDataModule):
@@ -34,23 +35,37 @@ class DetectionDataModule(L.LightningDataModule):
         self.persistent_workers = persistent_workers
         self.transforms = transforms
 
+    def _split_data(self):
+        df = pd.read_csv(self.annotations_filepath)
+        df = df.drop_duplicates(subset="Image_ID").reset_index()
+        train_df, test_val_df = train_test_split(df, test_size=0.3, stratify=df["class"], random_state=self.seed)
+        val_df, test_df = train_test_split(test_val_df, test_size=0.5, stratify=test_val_df["class"], random_state=self.seed)
+
+        return train_df, val_df, test_df
+
     def prepare_data(self):
         pass
 
     def setup(self, stage):
         if stage != "predict":
-            dataset = ImageDataset(
-                self.annotations_filepath,
-                self.imgs_path,
-                self.label_encoder,
-                transforms=self.transforms,
-                target_transforms=None,
-            )
+            train_df, val_df, test_df = self._split_data()
+            
+            # dataset = ImageDataset(
+            #     self.annotations_filepath,
+            #     self.imgs_path,
+            #     self.label_encoder,
+            #     transforms=self.transforms,
+            #     target_transforms=None,
+            # )
 
-            generator = torch.Generator().manual_seed(self.seed)
-            self.train_dataset, self.val_dataset, self.test_dataset = random_split(
-                dataset, self.split_ratio, generator=generator
-            )
+            # generator = torch.Generator().manual_seed(self.seed)
+            # self.train_dataset, self.val_dataset, self.test_dataset = random_split(
+            #     dataset, self.split_ratio, generator=generator
+            # )
+
+            self.train_dataset = ImageDataset(train_df, self.imgs_path, self.label_encoder, transforms=self.transforms)
+            self.val_dataset = ImageDataset(val_df, self.imgs_path, self.label_encoder, transforms=self.transforms)
+            self.test_dataset = ImageDataset(test_df, self.imgs_path, self.label_encoder, transforms=self.transforms)
 
         ## for preds
         if stage == "predict":
@@ -98,7 +113,7 @@ class DetectionDataModule(L.LightningDataModule):
             pin_memory=self.pin_memory,
             num_workers=self.num_workers,
             collate_fn=self._collate_wrapper,
-            persisten_workers=self.persistent_workers,
+            persistent_workers=self.persistent_workers,
         )
 
     def predict_dataloader(self):
@@ -108,5 +123,5 @@ class DetectionDataModule(L.LightningDataModule):
             pin_memory=self.pin_memory,
             num_workers=self.num_workers,
             collate_fn=self._collate_wrapper,
-            persisten_workers=self.persistent_workers,
+            persistent_workers=self.persistent_workers,
         )
