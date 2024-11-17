@@ -1,4 +1,4 @@
-tblogs/
+tb_logs/
 trained_backbones/
 checkpoints/
 __pycache__/

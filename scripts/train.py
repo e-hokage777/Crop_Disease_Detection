@@ -41,13 +41,21 @@ if __name__ == "__main__":
     if config.CHECKPOINT_LOAD_PATH:
         model = GCDDDetector.load_from_checkpoint(config.CHECKPOINT_LOAD_PATH,
                                                   num_classes=num_classes,
-                                                  learning_rate=config.LEARNING_RATE)
+                                                  learning_rate=config.LEARNING_RATE,
+                                                  trainable_backbone_layers=config.TRAINABLE_BACKBONE_LAYERS
+                                                 )
+        print("CHECKPOINT LOADED")
     else:
-        model = GCDDDetector(num_classes, learning_rate=config.LEARNING_RATE)
+        model = GCDDDetector(num_classes,
+                             learning_rate=config.LEARNING_RATE,
+                             trainable_backbone_layers=config.TRAINABLE_BACKBONE_LAYERS
+                            )
+        print("NO CHECKPOINT BEING USED")
     # model = torch.compile(model, dynamic=True)
 
     
     trainer = L.Trainer(
+        accumulate_grad_batches=config.ACCUM_GRAD_BATCHES,
         accelerator=config.ACCELERATOR,
         strategy=config.MULTI_GPU_STRATEGY,
         min_epochs=config.MIN_EPOCHS,
@@ -71,3 +79,5 @@ if __name__ == "__main__":
         trainer.validate(model, data_module)
     elif mode == "test":
         trainer.test(model, data_module)
+    elif mode == "predict":
+        trainer.predict(model, data_module)

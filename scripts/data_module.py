@@ -35,9 +35,10 @@ class DetectionDataModule(L.LightningDataModule):
         self.persistent_workers = persistent_workers
         self.transforms = transforms
 
+
     def _split_data(self):
         df = pd.read_csv(self.annotations_filepath)
-        df = df.drop_duplicates(subset="Image_ID").reset_index()
+        df = df.drop_duplicates(subset="Image_ID", keep="last", ignore_index=True)
         train_df, test_val_df = train_test_split(df, test_size=0.3, stratify=df["class"], random_state=self.seed)
         val_df, test_df = train_test_split(test_val_df, test_size=0.5, stratify=test_val_df["class"], random_state=self.seed)
 
@@ -49,19 +50,6 @@ class DetectionDataModule(L.LightningDataModule):
     def setup(self, stage):
         if stage != "predict":
             train_df, val_df, test_df = self._split_data()
-            
-            # dataset = ImageDataset(
-            #     self.annotations_filepath,
-            #     self.imgs_path,
-            #     self.label_encoder,
-            #     transforms=self.transforms,
-            #     target_transforms=None,
-            # )
-
-            # generator = torch.Generator().manual_seed(self.seed)
-            # self.train_dataset, self.val_dataset, self.test_dataset = random_split(
-            #     dataset, self.split_ratio, generator=generator
-            # )
 
             self.train_dataset = ImageDataset(train_df, self.imgs_path, self.label_encoder, transforms=self.transforms)
             self.val_dataset = ImageDataset(val_df, self.imgs_path, self.label_encoder, transforms=self.transforms)
@@ -72,24 +60,29 @@ class DetectionDataModule(L.LightningDataModule):
             self.pred_dataset = ImagePredictionDataset(
                 self.pred_annotations_filepath,
                 self.imgs_path,
-                transforms=self.transofrms,
+                transforms=self.transforms,
             )
 
     def _collate_wrapper(self, batch):
         images, targets = list(zip(*batch))
-
+        images = list(images)
+        targets = list(targets)
         if self.pin_memory:
             for i in range(len(images)):
-                images[i].pin_memory()
-                targets[i]["boxes"].pin_memory()
-                targets[i]["labels"].pin_memory()
+                images[i] = images[i].pin_memory()
+                targets[i]["boxes"] = targets[i]["boxes"].pin_memory()
+                targets[i]["labels"] = targets[i]["labels"].pin_memory()
 
         return images, targets
+
+    def _pred_collate_wrapper(self, batch):
+        return list(zip(*batch))
 
     def train_dataloader(self):
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
+            shuffle=True,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             collate_fn=self._collate_wrapper,
@@ -100,6 +93,7 @@ class DetectionDataModule(L.LightningDataModule):
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
+            shuffle=False,
             pin_memory=self.pin_memory,
             num_workers=self.num_workers,
             collate_fn=self._collate_wrapper,
@@ -110,6 +104,7 @@ class DetectionDataModule(L.LightningDataModule):
         return DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,
+            shuffle=False,
             pin_memory=self.pin_memory,
             num_workers=self.num_workers,
             collate_fn=self._collate_wrapper,
@@ -120,8 +115,9 @@ class DetectionDataModule(L.LightningDataModule):
         return DataLoader(
             self.pred_dataset,
             batch_size=self.batch_size,
+            shuffle=False,
             pin_memory=self.pin_memory,
             num_workers=self.num_workers,
-            collate_fn=self._collate_wrapper,
+            collate_fn=self._pred_collate_wrapper,
             persistent_workers=self.persistent_workers,
         )

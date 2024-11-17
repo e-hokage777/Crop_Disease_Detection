@@ -1,13 +1,14 @@
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, RichProgressBar
+from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, RichProgressBar, BasePredictionWriter, StochasticWeightAveraging
 import lightning as L
 import config
 import os
+import pandas as pd
 
 ## callback for getting 
 class ClassMAPDispCallback(L.Callback):
     def _map_per_class_dict(self, map_dict, encoder):
         holder = {}
-        classes = self.encoder.inverse_transform(map["classes"].numpy())
+        classes = encoder.inverse_transform(map_dict["classes"].numpy())
 
         for i in range(len(classes)):
             holder[classes[i]] = map_dict["map_per_class"][i]
@@ -16,11 +17,34 @@ class ClassMAPDispCallback(L.Callback):
         
     def on_test_epoch_end(self, trainer, pl_module):
         map = pl_module.map_alt.compute()
-        map["classes_found"] = len(map["classes"])
+        # map["classes_found"] = len(map["classes"])
         map_per_class_dict = self._map_per_class_dict(map, trainer.datamodule.label_encoder)
-        del map["classes"]
-        self.log_dict(map)
+        self.log_dict({
+            "map": map["map"],
+            "map_small": map["map_small"],
+            "map_large": map["map_large"],
+            "map_50": map["map_50"],
+            "map_75": map["map_75"],
+            "mar_10": map["mar_10"],
+            "mar_100": map["mar_100"],
+            "num_classes": len(map["classes"])
+        })
         self.log_dict(map_per_class_dict)
+
+class PredictionWriter(BasePredictionWriter):
+    def __init__(self, output_dir, write_interval):
+        super().__init__(write_interval)
+        self.output_dir = output_dir
+
+    def write_on_epoch_end(self, trainer, pl_module, predictions, batch_indices):
+        full_df = pd.concat(predictions, axis=0)
+        full_df["class"] = trainer.datamodule.label_encoder.inverse_transform(full_df["class"])
+        sub_index = 0
+        existing_subs = sorted(os.listdir(self.output_dir))
+        if existing_subs:
+            sub_index = int(existing_subs[-1].split("_")[-1]) + 1
+        full_df.to_csv(os.path.join(self.output_dir, f"submission_{sub_index}.csv"), index=False)
+       
 
 
 def get_callbacks(checkpoint_monitor="map_50"):
@@ -36,10 +60,11 @@ def get_callbacks(checkpoint_monitor="map_50"):
             every_n_epochs=1,
             save_top_k=1,
             save_on_train_epoch_end=False,
-            filename="epoch-{epoch:02d}_lr="+str(config.LEARNING_RATE)+"_map@50={map_50:.2f}",
+            filename="epoch-{epoch:02d}_lr="+str(config.LEARNING_RATE)+"_map@50={map_50:.2f}_",
         )
-        callbacks.append(checkpoint_callback)
+        # callbacks.append(checkpoint_callback)
         # callbacks.append(RichProgressBar())
         callbacks.append(ClassMAPDispCallback())
+        callbacks.append(PredictionWriter(config.SUBMISSION_PATH, write_interval="epoch"))
 
     return callbacks

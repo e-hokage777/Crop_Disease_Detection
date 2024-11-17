@@ -7,65 +7,59 @@ from torchvision.models.detection import (
     fasterrcnn_mobilenet_v3_large_fpn,
     FasterRCNN_MobileNet_V3_Large_FPN_Weights,
 )
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torchvision.ops import batched_nms, nms
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor, FasterRCNN
+from torchvision.models import mobilenet_v3_large
+from torchvision.models.detection.rpn import AnchorGenerator
+import torchvision
+from torchvision.ops import nms
 import config
+import pandas as pd
 
 
 class GCDDDetector(L.LightningModule):
-    def __init__(self, num_classes, learning_rate=0.001):
+    def __init__(self, num_classes, learning_rate=0.001, trainable_backbone_layers=3):
         super().__init__()
         self.num_classes = num_classes
         self.learning_rate = learning_rate
+        self.trainable_backbone_layers = trainable_backbone_layers
         self.detector = self._detector_setup(self.num_classes)
         self.training_step_losses = []
         self.map = MeanAveragePrecision(iou_type="bbox", iou_thresholds=[0.5])
         self.map_alt = MeanAveragePrecision(iou_type="bbox", class_metrics=True)
 
-        ## saving in logs
-        self.log("lr", self.learning_rate)
 
     def _detector_setup(self, num_classes):
-        ## getting backbone weights
-        backbone_weights = torch.load(
-            config.BACKBONE_PATH,
-            weights_only=True,
-            map_location="cpu"
+        anchor_generator = AnchorGenerator(sizes=config.ANCHOR_SIZES, aspect_ratios=config.ANCHOR_RATIOS)
+        detector = fasterrcnn_mobilenet_v3_large_fpn(
+            weights = FasterRCNN_MobileNet_V3_Large_FPN_Weights.DEFAULT,
+            rpn_nms_thresh=config.NMS_THRESH,
+            box_nms_thresh=config.NMS_THRESH
         )
 
-        detector = fasterrcnn_mobilenet_v3_large_fpn(
-            FasterRCNN_MobileNet_V3_Large_FPN_Weights.COCO_V1,
-            weights_backbone=backbone_weights,
-        )
         # Get the input features for the classifier
         in_features = detector.roi_heads.box_predictor.cls_score.in_features
 
         # Replace the head with a new one (with the correct number of classes)
         detector.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
+        ## checking anchor generator
+        detector.rpn.anchor_generator = anchor_generator
+
         return detector
 
-    ## function to filter with non-max suppression
     def _nms(self, preds):
-        if not type(preds) == list:
-            preds = [preds]
-
         new_preds = []
-        
+
         for pred in preds:
-            boxes = pred["boxes"]
-            labels = pred["labels"]
-            scores = pred["scores"]
-
-            filtered_idxs = nms(boxes, scores, config.NMS_THRESH)
-
-            new_pred = dict()
-            new_pred["boxes"] = boxes[[filtered_idxs]]
-            new_pred["labels"] = labels[[filtered_idxs]]
-            new_pred["scores"] = scores[[filtered_idxs]]
+            keep_idxs = nms(pred["boxes"], pred["scores"], config.NMS_THRESH)
+            new_pred = {}
+            new_pred["boxes"] = pred["boxes"][keep_idxs]
+            new_pred["labels"] = pred["labels"][keep_idxs]
+            new_pred["scores"] = pred["scores"][keep_idxs]
             new_preds.append(new_pred)
 
         return new_preds
+
 
     def forward(self, x):
         if self.training:
@@ -76,6 +70,7 @@ class GCDDDetector(L.LightningModule):
         loss_dict = self.forward(batch)
         loss = sum(loss_dict.values())
         self.training_step_losses.append(loss)
+        # self.log_dict(loss_dict, prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_index):
@@ -90,12 +85,27 @@ class GCDDDetector(L.LightningModule):
         preds = self._nms(preds)
         self.map_alt.update(preds, targets)
 
-    def prediction_step(self, batch, batch_index):
-        return self.forward(batch)
+    def _pred_to_df(self, image_names, preds):
+        items = []
+        for name, pred in zip(image_names, preds):
+            boxes = pred["boxes"].cpu().numpy()
+            labels = pred["labels"].cpu().numpy()
+            scores = pred["scores"].cpu().numpy()
+            for i in range(len(boxes)):
+                current_box = boxes[i]
+                items.append((name, labels[i], scores[i], current_box[0], current_box[1], current_box[2], current_box[3]))
 
-    def on_training_epoch_end(self):
+        return pd.DataFrame(items, columns=["Image_ID", "class", "confidence", "xmin", "ymin", "xmax", "ymax"])
+        
+    def predict_step(self, batch, batch_index):
+        image_names, images = batch
+        preds = self._nms(self.forward(images))
+        return self._pred_to_df(image_names, preds)
+        
+
+    def on_train_epoch_end(self):
         mean_loss = torch.stack(self.training_step_losses).mean()
-        self.log("loss", mean_loss, prog_bar=True)
+        self.log("total_loss", mean_loss, prog_bar=True)
         self.training_step_losses = []
 
     def on_validation_epoch_end(self):
@@ -106,6 +116,11 @@ class GCDDDetector(L.LightningModule):
     #     pass
 
     def configure_optimizers(self):
+        params = [
+            {"params": self.detector.backbone.parameters(), "lr":0.0001, "weight_decay":1e-5},
+            {"params": self.detector.rpn.parameters(), "lr":0.001, "weight_decay":1e-4},
+            {"params": self.detector.roi_heads.parameters(), "lr":0.001, "weight_decay":1e-4},
+        ]
         return SGD(
-            self.parameters(), lr=self.learning_rate, momentum=0.9, weight_decay=1e-4
+            params, momentum=0.9
         )

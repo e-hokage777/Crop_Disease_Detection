@@ -87,8 +87,9 @@ class ImagePredictionDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         image = io.imread(os.path.join(self.imgs_path, self.img_labels[idx]))
+        image_name = self.img_labels[idx]
 
         if self.transforms:
             image = self.transforms(image)
 
-        return image
+        return image_name, image
