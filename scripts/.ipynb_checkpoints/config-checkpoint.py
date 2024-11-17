@@ -33,8 +33,8 @@ BACKBONE_PATH = os.path.join(
     get_file_dir(), "../trained_backbones/mobilenet_v3_large=0.80.pt"
 )
 # CHECKPOINT_LOAD_PATH = os.path.join(get_file_dir(), "../checkpoints/epoch-epoch=00_lr=0.0001_map@50=map_50=0.00-v1.ckpt")
-CHECKPOINT_LOAD_PATH = os.path.join(get_file_dir(), "../checkpoints/epoch-epoch=03_lr=0.0002_map@50=map_50=0.22.ckpt")
-# CHECKPOINT_LOAD_PATH = None
+# CHECKPOINT_LOAD_PATH = os.path.join(get_file_dir(), "../checkpoints/epoch-epoch=03_lr=0.0002_map@50=map_50=0.22.ckpt")
+CHECKPOINT_LOAD_PATH = None
 SEED=42
 
 ## submissions
