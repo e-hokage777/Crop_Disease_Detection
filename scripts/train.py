@@ -14,15 +14,22 @@ from argparse import ArgumentParser
 if __name__ == "__main__":
     ## getting scripts arguments
     parser = ArgumentParser()
+    ## training args
     parser.add_argument("--accelerator", type=str, default="gpu")
     parser.add_argument("--devices", type=int, default=1)
     parser.add_argument("--learning_rate", type=float, default=0.008)
+    parser.add_argument("--precision", type=str, default="16-mixed")
+
+    ## data args
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--min_epochs", type=int, default=1)
     parser.add_argument("--max_epochs", type=int, default=20)
     parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--precision", type=str, default="16-mixed")
+    parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--persistent_workers", type=bool, default=False)
+    parser.add_argument("--pin_memory", type=int, default=1)
+
+    ## run args
     parser.add_argument("--mode", type=str, default="train")
     parser.add_argument("--fast_dev_run", action="store_true", default=False)
     parser.add_argument("--load_checkpoint", action="store_true", default=False)
@@ -54,6 +61,7 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         persistent_workers=args.persistent_workers,
+        pin_memory=args.pin_memory == 1
         seed=config.SEED
     )
 
