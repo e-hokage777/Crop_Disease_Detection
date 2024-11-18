@@ -14,6 +14,7 @@ import torchvision
 from torchvision.ops import nms
 import config
 import pandas as pd
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
 class GCDDDetector(L.LightningModule):
@@ -29,7 +30,6 @@ class GCDDDetector(L.LightningModule):
 
 
     def _detector_setup(self, num_classes):
-        anchor_generator = AnchorGenerator(sizes=config.ANCHOR_SIZES, aspect_ratios=config.ANCHOR_RATIOS)
         detector = fasterrcnn_mobilenet_v3_large_fpn(
             weights = FasterRCNN_MobileNet_V3_Large_FPN_Weights.DEFAULT,
             rpn_nms_thresh=config.NMS_THRESH,
@@ -43,7 +43,8 @@ class GCDDDetector(L.LightningModule):
         detector.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
         ## checking anchor generator
-        detector.rpn.anchor_generator = anchor_generator
+        # anchor_generator = AnchorGenerator(sizes=config.ANCHOR_SIZES, aspect_ratios=config.ANCHOR_RATIOS)
+        # detector.rpn.anchor_generator = anchor_generator
 
         return detector
 
@@ -100,6 +101,7 @@ class GCDDDetector(L.LightningModule):
     def predict_step(self, batch, batch_index):
         image_names, images = batch
         preds = self._nms(self.forward(images))
+        preds = self.forward(images)
         return self._pred_to_df(image_names, preds)
         
 
@@ -116,11 +118,26 @@ class GCDDDetector(L.LightningModule):
     #     pass
 
     def configure_optimizers(self):
-        params = [
-            {"params": self.detector.backbone.parameters(), "lr":0.0001, "weight_decay":1e-5},
-            {"params": self.detector.rpn.parameters(), "lr":0.001, "weight_decay":1e-4},
-            {"params": self.detector.roi_heads.parameters(), "lr":0.001, "weight_decay":1e-4},
-        ]
-        return SGD(
-            params, momentum=0.9
+        # params = [
+        #     {"params": self.detector.backbone.parameters(), "lr":0.0001, "weight_decay":1e-5},
+        #     {"params": self.detector.rpn.parameters(), "lr":0.001, "weight_decay":1e-4},
+        #     {"params": self.detector.roi_heads.parameters(), "lr":0.001, "weight_decay":1e-4},
+        # ]
+        optimizer =  SGD(
+            self.parameters(), lr=self.learning_rate, momentum=0.9, weight_decay=1e-4
         )
+
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": ReduceLROnPlateau(optimizer, mode="max", patience=0),
+                "interval": "epoch",
+                "frequency": 1,
+                "monitor": "map_50",
+                "strict": True,
+                # If using the `LearningRateMonitor` callback to monitor the
+                # learning rate progress, this keyword can be used to specify
+                # a custom logged name
+                "name": "plateau_scheduler",
+            }
+        }

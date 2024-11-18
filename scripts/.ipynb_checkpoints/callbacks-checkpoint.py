@@ -1,4 +1,6 @@
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, RichProgressBar, BasePredictionWriter, StochasticWeightAveraging
+from lightning.pytorch.callbacks import (ModelCheckpoint,
+EarlyStopping,
+RichProgressBar, BasePredictionWriter, StochasticWeightAveraging, LearningRateMonitor)
 import lightning as L
 import config
 import os
@@ -42,8 +44,18 @@ class PredictionWriter(BasePredictionWriter):
         sub_index = 0
         existing_subs = sorted(os.listdir(self.output_dir))
         if existing_subs:
-            sub_index = int(existing_subs[-1].split("_")[-1]) + 1
+            sub_index = int(existing_subs[-1].split("_")[-1].split(".")[0]) + 1
         full_df.to_csv(os.path.join(self.output_dir, f"submission_{sub_index}.csv"), index=False)
+
+class MetricsLogCallback(L.Callback):
+    def __init__(self, metrics=[]):
+        self.metrics = metrics
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+        metrics_dict = {}
+        for metric in self.metrics:
+            metrics_dict[metric] = trainer.callback_metrics.get(metric)
+        pl_module.log_dict(metrics_dict, prog_bar=True)
        
 
 
@@ -62,9 +74,11 @@ def get_callbacks(checkpoint_monitor="map_50"):
             save_on_train_epoch_end=False,
             filename="epoch-{epoch:02d}_lr="+str(config.LEARNING_RATE)+"_map@50={map_50:.2f}_",
         )
-        # callbacks.append(checkpoint_callback)
-        # callbacks.append(RichProgressBar())
+        callbacks.append(checkpoint_callback)
+        callbacks.append(RichProgressBar())
         callbacks.append(ClassMAPDispCallback())
         callbacks.append(PredictionWriter(config.SUBMISSION_PATH, write_interval="epoch"))
+        callbacks.append(LearningRateMonitor(logging_interval='epoch'))
+        callbacks.append(MetricsLogCallback(["plateau_scheduler"]))
 
     return callbacks

@@ -8,9 +8,9 @@ ACCELERATOR = "gpu"
 DEVICES = 1
 MULTI_GPU_STRATEGY="auto"
 LEARNING_RATE =0.008
-TRAIN_PRECISION="32-true"
-NMS_THRESH = 0.01 ## threshold for non-max suppression
-ACCUM_GRAD_BATCHES = 6
+TRAIN_PRECISION="16-mixed"
+NMS_THRESH = 0.05 ## threshold for non-max suppression
+ACCUM_GRAD_BATCHES = 4
 
 ## detector
 ANCHOR_SIZES = ((64, 128, 400, 512, 800),) * 3
@@ -23,7 +23,7 @@ ANNOT_FILEPATH = os.path.join(get_file_dir(), "../data/Train.csv")
 PRED_ANNOT_FILEPATH = os.path.join(get_file_dir(), "../data/Test.csv")
 IMGS_PATH = os.path.join(get_file_dir(), "../data/images")
 NUM_WORKERS = 0
-BATCH_SIZE = 10
+BATCH_SIZE = 8
 PERSISTENT_WORKERS=False
 
 ## others

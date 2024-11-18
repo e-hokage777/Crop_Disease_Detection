@@ -38,9 +38,13 @@ class DetectionDataModule(L.LightningDataModule):
 
     def _split_data(self):
         df = pd.read_csv(self.annotations_filepath)
-        df = df.drop_duplicates(subset="Image_ID", keep="last", ignore_index=True)
-        train_df, test_val_df = train_test_split(df, test_size=0.3, stratify=df["class"], random_state=self.seed)
+        df_unique = df.drop_duplicates(subset="Image_ID", keep="last", ignore_index=True)
+        train_df, test_val_df = train_test_split(df_unique, test_size=0.3, stratify=df_unique["class"], random_state=self.seed)
         val_df, test_df = train_test_split(test_val_df, test_size=0.5, stratify=test_val_df["class"], random_state=self.seed)
+
+        train_df = df[df["Image_ID"].isin(train_df["Image_ID"])]
+        val_df = df[df["Image_ID"].isin(val_df["Image_ID"])]
+        test_df = df[df["Image_ID"].isin(test_df["Image_ID"])]
 
         return train_df, val_df, test_df
 
