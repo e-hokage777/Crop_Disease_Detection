@@ -24,7 +24,7 @@ if __name__ == "__main__":
     parser.add_argument("--precision", type=str, default="16-mixed")
     parser.add_argument("--persistent_workers", type=bool, default=False)
     parser.add_argument("--mode", type=str, default="train")
-    parser.add_argument("fast_dev_run", type=bool, default=True)
+    parser.add_argument("--fast_dev_run", action="store_true", default=False)
 
     args = parser.parse_args()
     

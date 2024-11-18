@@ -54,8 +54,12 @@ class MetricsLogCallback(L.Callback):
     def on_validation_epoch_end(self, trainer, pl_module):
         metrics_dict = {}
         for metric in self.metrics:
-            metrics_dict[metric] = trainer.callback_metrics.get(metric)
-        pl_module.log_dict(metrics_dict, prog_bar=True)
+            value = trainer.callback_metrics.get(metric)
+            if value:
+                metrics_dict[metric] = value
+
+        if metrics_dict:
+            pl_module.log_dict(metrics_dict, prog_bar=True)
        
 
 
@@ -72,7 +76,7 @@ def get_callbacks(checkpoint_monitor="map_50"):
             every_n_epochs=1,
             save_top_k=1,
             save_on_train_epoch_end=False,
-            filename="epoch-{epoch:02d}_lr="+str(config.LEARNING_RATE)+"_map@50={map_50:.2f}_",
+            filename="epoch-{epoch:02d}_map@50={map_50:.2f}_",
         )
         callbacks.append(checkpoint_callback)
         callbacks.append(RichProgressBar())
