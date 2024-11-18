@@ -25,6 +25,8 @@ if __name__ == "__main__":
     parser.add_argument("--persistent_workers", type=bool, default=False)
     parser.add_argument("--mode", type=str, default="train")
     parser.add_argument("--fast_dev_run", action="store_true", default=False)
+    parser.add_argument("--load_checkpoint", action="store_true", default=False)
+    parser.add_argument("--checkpoint_path", type=str, default=config.CHECKPOINT_LOAD_PATH)
 
     args = parser.parse_args()
     
@@ -55,7 +57,7 @@ if __name__ == "__main__":
         seed=config.SEED
     )
 
-    if config.CHECKPOINT_LOAD_PATH:
+    if args.load_checkpoint && args.checkpoint_path:
         model = GCDDDetector.load_from_checkpoint(config.CHECKPOINT_LOAD_PATH,
                                                   num_classes=num_classes,
                                                   learning_rate=args.learning_rate,
