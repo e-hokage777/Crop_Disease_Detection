@@ -61,7 +61,7 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         persistent_workers=args.persistent_workers,
-        pin_memory=args.pin_memory == 1
+        pin_memory=args.pin_memory == 1,
         seed=config.SEED
     )
 
