@@ -28,7 +28,7 @@ class GCDDDetector(L.LightningModule):
         self.map = MeanAveragePrecision(iou_type="bbox", iou_thresholds=[0.5])
         self.map_alt = MeanAveragePrecision(iou_type="bbox", class_metrics=True)
 
-        print("INITIAL LEARNING_RATE": self.learning_rate)
+        print("INITIAL LEARNING_RATE:", self.learning_rate)
 
 
     def _detector_setup(self, num_classes):
