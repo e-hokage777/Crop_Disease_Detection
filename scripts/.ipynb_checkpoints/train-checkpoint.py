@@ -8,9 +8,26 @@ import os
 from utils import get_labelencoder
 from lightning.pytorch.loggers import TensorBoardLogger
 import sys
+from argparse import ArgumentParser
 
 
 if __name__ == "__main__":
+    ## getting scripts arguments
+    parser = ArgumentParser()
+    parser.add_argument("--accelerator", type=str, default="gpu")
+    parser.add_argument("--devices", type=int, default=1)
+    parser.add_argument("--learning_rate", type=float, default=0.008)
+    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--min_epochs", type=int, default=1)
+    parser.add_argument("--max_epochs", type=int, defualt=20)
+    parser.add_argument("--num_workers", type=int, default=0)
+    parser.add_argument("--precision", type=str, default="16-mixed")
+    parser.add_argument("--persistent_workers", type=bool, default=False)
+    parser.add_argument("--mode", type=str, default="train")
+    parser.add_argument("fast_dev_run", type=bool, default=True)
+
+    args = parser.parse_args()
+    
     ## getting paths
     annot_filepath = os.environ.get("GCDD_ANNOT_FILEPATH") or config.ANNOT_FILEPATH
     pred_annot_filepath = (
@@ -32,23 +49,23 @@ if __name__ == "__main__":
         pred_annotations_filepath=pred_annot_filepath,
         imgs_path=imgs_path,
         label_encoder=label_encoder,
-        batch_size=config.BATCH_SIZE,
-        num_workers=config.NUM_WORKERS,
-        persistent_workers=config.PERSISTENT_WORKERS,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
+        persistent_workers=args.persistent_workers,
         seed=config.SEED
     )
 
     if config.CHECKPOINT_LOAD_PATH:
         model = GCDDDetector.load_from_checkpoint(config.CHECKPOINT_LOAD_PATH,
                                                   num_classes=num_classes,
-                                                  learning_rate=config.LEARNING_RATE,
-                                                  trainable_backbone_layers=config.TRAINABLE_BACKBONE_LAYERS
+                                                  learning_rate=args.learning_rate,
+                                                  # trainable_backbone_layers=config.TRAINABLE_BACKBONE_LAYERS
                                                  )
         print("CHECKPOINT LOADED")
     else:
         model = GCDDDetector(num_classes,
-                             learning_rate=config.LEARNING_RATE,
-                             trainable_backbone_layers=config.TRAINABLE_BACKBONE_LAYERS
+                             learning_rate=args.learning_rate
+                             # trainable_backbone_layers=config.TRAINABLE_BACKBONE_LAYERS
                             )
         print("NO CHECKPOINT BEING USED")
     # model = torch.compile(model, dynamic=True)
@@ -56,24 +73,25 @@ if __name__ == "__main__":
     
     trainer = L.Trainer(
         accumulate_grad_batches=config.ACCUM_GRAD_BATCHES,
-        accelerator=config.ACCELERATOR,
+        accelerator=args.accelerator,
+        devices=args.devices,
         strategy=config.MULTI_GPU_STRATEGY,
-        min_epochs=config.MIN_EPOCHS,
-        max_epochs=config.MAX_EPOCHS,
-        devices=config.DEVICES,
-        precision=config.TRAIN_PRECISION,
+        min_epochs=args.min_epochs,
+        max_epochs=args.max_epochs,
+        precision=args.precision,
         callbacks=get_callbacks(),
         logger=logger,
+        fast_dev_run=args.fast_dev_run
     )
 
     ##
     try:
-        mode = sys.argv[1]
+        mode = args.mode
     except:
         raise Exception("Please provide a system argument--train/test/validate. eg. pythong train.py [train/validate/test]")
 
     if mode == "train":
-        print(f"TRAINING MODEL AT LEARNING RATE OF: {config.LEARNING_RATE}")
+        # print(f"TRAINING MODEL AT LEARNING RATE OF: {args.learning_rate}")
         trainer.fit(model, data_module)
     elif mode == "validate":
         trainer.validate(model, data_module)

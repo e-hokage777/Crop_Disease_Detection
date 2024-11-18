@@ -4,10 +4,10 @@ from utils import get_file_dir
 ## training
 MIN_EPOCHS = 1
 MAX_EPOCHS = 20
-ACCELERATOR = "gpu"
-DEVICES = 1
+# ACCELERATOR = "gpu"
+# DEVICES = 1
 MULTI_GPU_STRATEGY="auto"
-LEARNING_RATE =0.008
+# LEARNING_RATE =0.008
 TRAIN_PRECISION="16-mixed"
 NMS_THRESH = 0.05 ## threshold for non-max suppression
 ACCUM_GRAD_BATCHES = 4
