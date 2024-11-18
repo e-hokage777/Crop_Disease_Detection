@@ -72,7 +72,7 @@ class DetectionDataModule(L.LightningDataModule):
         images = list(images)
         targets = list(targets)
 
-        if torch.cuda.is_available and self.pin_memory:
+        if torch.cuda.is_available() and self.pin_memory:
             for i in range(len(images)):
                 images[i] = images[i].pin_memory()
                 targets[i]["boxes"] = targets[i]["boxes"].pin_memory()
