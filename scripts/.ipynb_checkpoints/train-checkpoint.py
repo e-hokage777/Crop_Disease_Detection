@@ -57,7 +57,7 @@ if __name__ == "__main__":
         seed=config.SEED
     )
 
-    if args.load_checkpoint && args.checkpoint_path:
+    if args.load_checkpoint and args.checkpoint_path:
         model = GCDDDetector.load_from_checkpoint(config.CHECKPOINT_LOAD_PATH,
                                                   num_classes=num_classes,
                                                   learning_rate=args.learning_rate,
