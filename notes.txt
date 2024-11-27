@@ -1,1 +1,10 @@
-There are hardly any overlaps so make box_nms_thresh really low
+- There are hardly any overlaps so make box_nms_thresh really low
+-- MAKE SURE TO PERFORM MEAN NORMALIZATION (Images are really green so might be very important !!!!!!!!!!!)
+-- SOME CLASSES LIKE "Corn_Cercospora_Leaf_Spot" and "Corn_Streak" are very similar (If I remove corn_streak my model might do better since there are more of the other)
+
+
+
+INSIGHTS::::::::::::
+-- coninciding bounding boxes with different classes. usually between tomato and pepper diseases
+-- from research pepper doesn't have Septoria, probably reason for duplicate
+-- Peppers were mistake for tomatoes in blightn and septoria

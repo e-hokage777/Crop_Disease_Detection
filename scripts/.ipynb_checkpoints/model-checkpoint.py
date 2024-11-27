@@ -11,10 +11,13 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor, FasterRC
 from torchvision.models import mobilenet_v3_large
 from torchvision.models.detection.rpn import AnchorGenerator
 import torchvision
-from torchvision.ops import nms
+from torchvision.ops import nms, MultiScaleRoIAlign
 import config
 import pandas as pd
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import ReduceLROnPlateau, CyclicLR
+from torchvision.models import mobilenet_v3_large, mobilenet_v3_small, MobileNet_V3_Large_Weights, MobileNet_V3_Small_Weights
+from torchvision.models.detection.backbone_utils import _mobilenet_extractor
+from torch.optim.swa_utils import SWALR
 
 
 class GCDDDetector(L.LightningModule):
@@ -34,8 +37,6 @@ class GCDDDetector(L.LightningModule):
     def _detector_setup(self, num_classes):
         detector = fasterrcnn_mobilenet_v3_large_fpn(
             weights = FasterRCNN_MobileNet_V3_Large_FPN_Weights.DEFAULT,
-            rpn_nms_thresh=config.NMS_THRESH,
-            box_nms_thresh=config.NMS_THRESH
         )
 
         # Get the input features for the classifier
@@ -44,9 +45,22 @@ class GCDDDetector(L.LightningModule):
         # Replace the head with a new one (with the correct number of classes)
         detector.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
-        ## checking anchor generator
+
         # anchor_generator = AnchorGenerator(sizes=config.ANCHOR_SIZES, aspect_ratios=config.ANCHOR_RATIOS)
-        # detector.rpn.anchor_generator = anchor_generator
+        # backbone = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights.DEFAULT)
+        # # backbone = mobilenet_v3_small(weights=MobileNet_V3_Small_Weights.DEFAULT)
+        # box_roi_pool = MultiScaleRoIAlign(featmap_names=["0", "1", "pool"], output_size=14, sampling_ratio=2)
+        # backbone = _mobilenet_extractor(backbone, True, 3)
+
+        # detector = FasterRCNN(
+        #     backbone,
+        #     num_classes=self.num_classes,
+        #     # image_mean=(0.4763, 0.5514, 0.3163),
+        #     # image_std=(0.2901, 0.2821, 0.2724),
+        #     rpn_anchor_generator = anchor_generator,
+        #     box_roi_pool = box_roi_pool,
+        #     # box_nms_thresh=0.3
+        # )
 
         return detector
 
@@ -67,6 +81,7 @@ class GCDDDetector(L.LightningModule):
     def forward(self, x):
         if self.training:
             return self.detector(*x)
+
         return self.detector(x)
 
     def training_step(self, batch, batch_index):
@@ -79,13 +94,13 @@ class GCDDDetector(L.LightningModule):
     def validation_step(self, batch, batch_index):
         images, targets = batch
         preds = self.forward(images)
-        preds = self._nms(preds)
+        # preds = self._nms(preds)
         self.map.update(preds, targets)
 
     def test_step(self, batch, batch_index):
         images, targets = batch
         preds = self.forward(images)
-        preds = self._nms(preds)
+        # preds = self._nms(preds)
         self.map_alt.update(preds, targets)
 
     def _pred_to_df(self, image_names, preds):
@@ -102,7 +117,7 @@ class GCDDDetector(L.LightningModule):
         
     def predict_step(self, batch, batch_index):
         image_names, images = batch
-        preds = self._nms(self.forward(images))
+        # preds = self._nms(self.forward(images))
         preds = self.forward(images)
         return self._pred_to_df(image_names, preds)
         
@@ -126,20 +141,20 @@ class GCDDDetector(L.LightningModule):
         #     {"params": self.detector.roi_heads.parameters(), "lr":0.001, "weight_decay":1e-4},
         # ]
         optimizer =  SGD(
-            self.parameters(), lr=self.learning_rate, momentum=0.9, weight_decay=1e-4
+            [{"params":self.parameters()}], lr=self.learning_rate, momentum=0.9, weight_decay=1e-4
         )
+        
+        # scheduler = ReduceLROnPlateau(optimizer, mode="max", patience=0)
+        # scheduler = CyclicLR(optimizer, base_lr=0.0001, max_lr=0.08, step_size_up=200, step_size_down=200)
+        scheduler = SWALR(optimizer, swa_lr=0.001, anneal_epochs=10)
 
         return {
             "optimizer": optimizer,
             "lr_scheduler": {
-                "scheduler": ReduceLROnPlateau(optimizer, mode="max", patience=0),
-                "interval": "epoch",
+                "scheduler": scheduler,
+                "interval": 'step',
                 "frequency": 1,
-                "monitor": "map_50",
                 "strict": True,
-                # If using the `LearningRateMonitor` callback to monitor the
-                # learning rate progress, this keyword can be used to specify
-                # a custom logged name
-                "name": "plateau_scheduler",
+                "name": "cycle_scheduler",
             }
         }

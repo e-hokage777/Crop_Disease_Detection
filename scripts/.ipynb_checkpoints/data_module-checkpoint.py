@@ -21,6 +21,7 @@ class DetectionDataModule(L.LightningDataModule):
         pin_memory=True,
         persistent_workers=False,
         transforms=ToTensor(),
+        test_transforms=ToTensor()
     ):
         super().__init__()
         self.num_workers = num_workers
@@ -34,10 +35,17 @@ class DetectionDataModule(L.LightningDataModule):
         self.pin_memory = pin_memory
         self.persistent_workers = persistent_workers
         self.transforms = transforms
+        self.test_transforms = test_transforms
 
 
-    def _split_data(self):
-        df = pd.read_csv(self.annotations_filepath)
+
+    def _clean_df(self, df):
+        width = df["xmax"] - df["xmin"]
+        height = df["ymax"] - df["ymin"]
+        df = df[(width > 0) & (height > 0)]
+        return df
+        
+    def _split_data(self, df):
         df_unique = df.drop_duplicates(subset="Image_ID", keep="last", ignore_index=True)
         train_df, test_val_df = train_test_split(df_unique, test_size=0.3, stratify=df_unique["class"], random_state=self.seed)
         val_df, test_df = train_test_split(test_val_df, test_size=0.5, stratify=test_val_df["class"], random_state=self.seed)
@@ -48,23 +56,27 @@ class DetectionDataModule(L.LightningDataModule):
 
         return train_df, val_df, test_df
 
-    def prepare_data(self):
-        pass
 
     def setup(self, stage):
         if stage != "predict":
-            train_df, val_df, test_df = self._split_data()
+            df = pd.read_csv(self.annotations_filepath)
+            df = self._clean_df(df)
+            train_df, val_df, test_df = self._split_data(df)
 
             self.train_dataset = ImageDataset(train_df, self.imgs_path, self.label_encoder, transforms=self.transforms)
-            self.val_dataset = ImageDataset(val_df, self.imgs_path, self.label_encoder, transforms=self.transforms)
-            self.test_dataset = ImageDataset(test_df, self.imgs_path, self.label_encoder, transforms=self.transforms)
+            self.val_dataset = ImageDataset(val_df, self.imgs_path, self.label_encoder, transforms=self.test_transforms)
+            self.test_dataset = ImageDataset(test_df, self.imgs_path, self.label_encoder, transforms=self.test_transforms)
+
+            # ## to allow testing on train dataset
+            # if stage == "test_on_train":
+            #     self.test_dataset = ImageDataset(train_df, self.imgs_path, self.label_encoder, transforms=self.test_transforms)
 
         ## for preds
         if stage == "predict":
             self.pred_dataset = ImagePredictionDataset(
                 self.pred_annotations_filepath,
                 self.imgs_path,
-                transforms=self.transforms,
+                transforms=self.test_transforms,
             )
 
     def _collate_wrapper(self, batch):

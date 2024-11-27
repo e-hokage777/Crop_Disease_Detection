@@ -5,7 +5,7 @@ from callbacks import get_callbacks
 import config
 import torch
 import os
-from utils import get_labelencoder
+from utils import get_labelencoder, get_transforms, get_test_transforms, get_num_classes
 from lightning.pytorch.loggers import TensorBoardLogger
 import sys
 from argparse import ArgumentParser
@@ -17,7 +17,7 @@ if __name__ == "__main__":
     ## training args
     parser.add_argument("--accelerator", type=str, default="gpu")
     parser.add_argument("--devices", type=int, default=1)
-    parser.add_argument("--learning_rate", type=float, default=0.008)
+    parser.add_argument("--learning_rate", type=float, default=0.02)
     parser.add_argument("--precision", type=str, default="16-mixed")
 
     ## data args
@@ -30,6 +30,7 @@ if __name__ == "__main__":
 
     ## run args
     parser.add_argument("--mode", type=str, default="train")
+    parser.add_argument("--test_on_train_data", action="store_true", default=False)
     parser.add_argument("--fast_dev_run", action="store_true", default=False)
     parser.add_argument("--load_checkpoint", action="store_true", default=False)
     parser.add_argument("--checkpoint_path", type=str, default=config.CHECKPOINT_LOAD_PATH)
@@ -45,7 +46,7 @@ if __name__ == "__main__":
     logs_path = os.environ.get("GCDD_LOGS_PATH") or config.LOGS_PATH
     imgs_path = os.environ.get("GCDD_IMGS_PATH") or config.IMGS_PATH
 
-    num_classes = 23 + 1
+    num_classes = get_num_classes(annot_filepath, "class")
     label_encoder = get_labelencoder(annot_filepath, "class")
     
     ## logger
@@ -61,7 +62,9 @@ if __name__ == "__main__":
         num_workers=args.num_workers,
         persistent_workers=args.persistent_workers,
         pin_memory=args.pin_memory == 1,
-        seed=config.SEED
+        seed=config.SEED,
+        transforms=get_transforms(),
+        test_transforms=get_test_transforms()
     )
 
     if args.load_checkpoint and args.checkpoint_path:
@@ -90,7 +93,7 @@ if __name__ == "__main__":
         precision=args.precision,
         callbacks=get_callbacks(),
         logger=logger,
-        fast_dev_run=args.fast_dev_run
+        fast_dev_run=args.fast_dev_run,        
     )
 
     ##
@@ -105,6 +108,10 @@ if __name__ == "__main__":
     elif mode == "validate":
         trainer.validate(model, data_module)
     elif mode == "test":
-        trainer.test(model, data_module)
+        if args.test_on_train_data:
+            data_module.setup("test_on_train")
+            trainer.test(model, datamodule=data_module)
+        else:
+            trainer.test(model, data_module)
     elif mode == "predict":
         trainer.predict(model, data_module)

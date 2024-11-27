@@ -3,6 +3,8 @@ from skimage import io
 import pandas as pd
 import os
 import numpy as np
+from torchvision import tv_tensors
+from torchvision.io import decode_image
 
 
 ## DataLoader for loading images for detection
@@ -13,13 +15,10 @@ class ImageDataset(torch.utils.data.Dataset):
         img_dir,
         label_encoder,
         transforms=None,
-        target_transforms=None,
     ):
 
-        # self.df = pd.read_csv(annotations_file)
         self.df = annotations_file
         self.transforms = transforms
-        self.target_transforms = target_transforms
         self.class_encoder = label_encoder
 
         ## encoding the class labels
@@ -35,15 +34,15 @@ class ImageDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.img_labels[idx])
-        image = io.imread(img_path)
+        image = decode_image(img_path)
 
         target = self.targets[self.img_labels[idx]].copy()
         
         if self.transforms:
-            image = self.transforms(image)
-
-        if self.target_transforms:
-            target = self.target_transforms(target)
+            # image = tv_tensors.Image(image, dtype=torch.float32)
+            target["boxes"] = tv_tensors.BoundingBoxes(target["boxes"], format="XYXY", canvas_size=image.shape[-2:])
+            image, target = self.transforms(image, target)
+            # print(image.max(), image.min())
 
         return image, target
 

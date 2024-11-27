@@ -43,15 +43,17 @@ class PredictionWriter(BasePredictionWriter):
         full_df["class"] = trainer.datamodule.label_encoder.inverse_transform(full_df["class"])
         sub_index = 0
         existing_subs = sorted(os.listdir(self.output_dir))
-        if existing_subs:
-            sub_index = int(existing_subs[-1].split("_")[-1].split(".")[0]) + 1
+        sub_indices = [int(item.split("_")[-1].split(".")[0])  for item in os.listdir(self.output_dir) if item.startswith("submission")]
+        if sub_indices:
+            sub_index = max(sub_indices)
         full_df.to_csv(os.path.join(self.output_dir, f"submission_{sub_index}.csv"), index=False)
 
 class MetricsLogCallback(L.Callback):
-    def __init__(self, metrics=[]):
+    def __init__(self, metrics, logging_interval="step"):
         self.metrics = metrics
+        self.logging_interval = logging_interval
 
-    def on_validation_epoch_end(self, trainer, pl_module):
+    def _common_step(self, trainer, pl_module):
         metrics_dict = {}
         for metric in self.metrics:
             value = trainer.callback_metrics.get(metric)
@@ -59,8 +61,16 @@ class MetricsLogCallback(L.Callback):
                 metrics_dict[metric] = value
 
         if metrics_dict:
-            pl_module.log_dict(metrics_dict, prog_bar=True)
-       
+            pl_module.log_dict(metrics_dict, prog_bar=True, logger=False)
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+        if self.logging_interval != "step":
+            self._common_step(trainer, pl_module)
+        
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        if self.logging_interval == "step":
+            self._common_step(trainer, pl_module)
+
 
 
 def get_callbacks(checkpoint_monitor="map_50"):
@@ -76,13 +86,14 @@ def get_callbacks(checkpoint_monitor="map_50"):
             every_n_epochs=1,
             save_top_k=1,
             save_on_train_epoch_end=False,
-            filename="epoch-{epoch:02d}_map@50={map_50:.2f}_",
+            filename="epoch-{epoch:02d}_map@50={map_50:.2f}",
         )
         callbacks.append(checkpoint_callback)
         callbacks.append(RichProgressBar())
         callbacks.append(ClassMAPDispCallback())
         callbacks.append(PredictionWriter(config.SUBMISSION_PATH, write_interval="epoch"))
-        callbacks.append(LearningRateMonitor(logging_interval='epoch'))
-        callbacks.append(MetricsLogCallback(["plateau_scheduler"]))
+        callbacks.append(LearningRateMonitor(logging_interval="step"))
+        callbacks.append(MetricsLogCallback(metrics=["cycle_scheduler"]))
+        # callbacks.append(StochasticWeightAveraging(swa_lrs=0.001, swa_epoch_start=1, annealing_epochs=3))
 
     return callbacks
