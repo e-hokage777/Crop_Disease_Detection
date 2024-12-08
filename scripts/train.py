@@ -5,7 +5,7 @@ from callbacks import get_callbacks
 import config
 import torch
 import os
-from utils import get_labelencoder, get_transforms, get_test_transforms, get_num_classes
+from _utils import get_labelencoder, get_transforms, get_test_transforms, get_num_classes
 from lightning.pytorch.loggers import TensorBoardLogger
 import sys
 from argparse import ArgumentParser
@@ -19,14 +19,15 @@ if __name__ == "__main__":
     parser.add_argument("--devices", type=int, default=1)
     parser.add_argument("--learning_rate", type=float, default=0.02)
     parser.add_argument("--precision", type=str, default="16-mixed")
+    parser.add_argument("--accum_grad_batches", type=int, default=4)
 
     ## data args
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--min_epochs", type=int, default=1)
     parser.add_argument("--max_epochs", type=int, default=20)
     parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--persistent_workers", type=bool, default=False)
-    parser.add_argument("--pin_memory", type=int, default=1)
+    parser.add_argument("--persistent_workers", action="store_true", default=False)
+    parser.add_argument("--pin_memory", action="store_true", default=True)
 
     ## run args
     parser.add_argument("--mode", type=str, default="train")
@@ -61,7 +62,7 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         persistent_workers=args.persistent_workers,
-        pin_memory=args.pin_memory == 1,
+        pin_memory=args.pin_memory,
         seed=config.SEED,
         transforms=get_transforms(),
         test_transforms=get_test_transforms()
@@ -84,7 +85,7 @@ if __name__ == "__main__":
 
     
     trainer = L.Trainer(
-        accumulate_grad_batches=config.ACCUM_GRAD_BATCHES,
+        accumulate_grad_batches=args.accum_grad_batches,
         accelerator=args.accelerator,
         devices=args.devices,
         strategy=config.MULTI_GPU_STRATEGY,

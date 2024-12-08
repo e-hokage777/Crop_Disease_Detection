@@ -8,3 +8,9 @@ INSIGHTS::::::::::::
 -- coninciding bounding boxes with different classes. usually between tomato and pepper diseases
 -- from research pepper doesn't have Septoria, probably reason for duplicate
 -- Peppers were mistake for tomatoes in blightn and septoria
+
+TO TRY ::::::::::::
+-- convert all Pepper_Septoria to Tomato_Septoria
+-- Some healthy bboes overlap sick. Healthy should only contain healthy
+-- remove outliers (width > 800 and aspect > 2)
+-- because mobilenet pytorch's mobilenet fpn extracts only last 2 layers, might be finding difficult to detect small objects (which are dominant)

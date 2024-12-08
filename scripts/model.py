@@ -5,9 +5,11 @@ from torch.optim import SGD
 import torch
 from torchvision.models.detection import (
     fasterrcnn_mobilenet_v3_large_fpn,
+    fasterrcnn_resnet50_fpn_v2,
     FasterRCNN_MobileNet_V3_Large_FPN_Weights,
 )
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor, FasterRCNN
+from torchvision.models.detection.retinanet import RetinaNet
 from torchvision.models import mobilenet_v3_large
 from torchvision.models.detection.rpn import AnchorGenerator
 import torchvision
@@ -15,9 +17,10 @@ from torchvision.ops import nms, MultiScaleRoIAlign
 import config
 import pandas as pd
 from torch.optim.lr_scheduler import ReduceLROnPlateau, CyclicLR
-from torchvision.models import mobilenet_v3_large, mobilenet_v3_small, MobileNet_V3_Large_Weights, MobileNet_V3_Small_Weights
+from torchvision.models import mobilenet_v3_large, mobilenet_v3_small, MobileNet_V3_Large_Weights, efficientnet_b3, EfficientNet_B3_Weights
 from torchvision.models.detection.backbone_utils import _mobilenet_extractor
 from torch.optim.swa_utils import SWALR
+from ultralytics import YOLO
 
 
 class GCDDDetector(L.LightningModule):
@@ -31,37 +34,51 @@ class GCDDDetector(L.LightningModule):
         self.map = MeanAveragePrecision(iou_type="bbox", iou_thresholds=[0.5])
         self.map_alt = MeanAveragePrecision(iou_type="bbox", class_metrics=True)
 
-        print("INITIAL LEARNING_RATE:", self.learning_rate)
 
 
     def _detector_setup(self, num_classes):
-        detector = fasterrcnn_mobilenet_v3_large_fpn(
-            weights = FasterRCNN_MobileNet_V3_Large_FPN_Weights.DEFAULT,
-        )
-
-        # Get the input features for the classifier
-        in_features = detector.roi_heads.box_predictor.cls_score.in_features
-
-        # Replace the head with a new one (with the correct number of classes)
-        detector.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
-
-
-        # anchor_generator = AnchorGenerator(sizes=config.ANCHOR_SIZES, aspect_ratios=config.ANCHOR_RATIOS)
-        # backbone = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights.DEFAULT)
-        # # backbone = mobilenet_v3_small(weights=MobileNet_V3_Small_Weights.DEFAULT)
-        # box_roi_pool = MultiScaleRoIAlign(featmap_names=["0", "1", "pool"], output_size=14, sampling_ratio=2)
         # backbone = _mobilenet_extractor(backbone, True, 3)
+        # detector = fasterrcnn_mobilenet_v3_large_fpn(
+        #     weights = FasterRCNN_MobileNet_V3_Large_FPN_Weights.DEFAULT,
+        #     min_size=1024,
+        #     backbone_weights=backbone_weights
+        #     # box_roi_pool = MultiScaleRoIAlign(featmap_names=["0", "1", "2", "3"], output_size=14, sampling_ratio=2)
+        #     # box_score_thresh=0.3
+        #     # bbox_reg_weights=(15.0, 15.0, 5.0, 5.0)
+        # )
+
+        # # Get the input features for the classifier
+        # in_features = detector.roi_heads.box_predictor.cls_score.in_features
+
+        # # Replace the head with a new one (with the correct number of classes)
+        # detector.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+
+        ## generating anchors
+        anchor_generator = AnchorGenerator(sizes=config.ANCHOR_SIZES, aspect_ratios=config.ANCHOR_RATIOS)
+
+        ## getting backbone
+        backbone = mobilenet_v3_large()
+        backbone.features.load_state_dict(torch.load(config.BACKBONE_LOAD_PATH, map_location="cpu", weights_only=True))
+        backbone = _mobilenet_extractor(backbone, True, 3)
+
+        detector = FasterRCNN(
+            backbone,
+            num_classes=num_classes,
+            rpn_anchor_generator=anchor_generator,
+            min_size=1024
+        )
+        
+        # custom MOBILENETV3
+        # returned_layers = [2,3,4,5]
+        # backbone = efficientnet_b3(EfficientNet_B3_Weights.DEFAULT)
 
         # detector = FasterRCNN(
         #     backbone,
         #     num_classes=self.num_classes,
-        #     # image_mean=(0.4763, 0.5514, 0.3163),
-        #     # image_std=(0.2901, 0.2821, 0.2724),
         #     rpn_anchor_generator = anchor_generator,
-        #     box_roi_pool = box_roi_pool,
-        #     # box_nms_thresh=0.3
         # )
 
+    
         return detector
 
     def _nms(self, preds):
@@ -143,10 +160,10 @@ class GCDDDetector(L.LightningModule):
         optimizer =  SGD(
             [{"params":self.parameters()}], lr=self.learning_rate, momentum=0.9, weight_decay=1e-4
         )
-        
-        # scheduler = ReduceLROnPlateau(optimizer, mode="max", patience=0)
-        # scheduler = CyclicLR(optimizer, base_lr=0.0001, max_lr=0.08, step_size_up=200, step_size_down=200)
-        scheduler = SWALR(optimizer, swa_lr=0.001, anneal_epochs=10)
+
+        # scheduler = ReduceLROnPlateau(optimizer, mode="max", patience=2)
+        # scheduler = CyclicLR(optimizer, base_lr=0.001, max_lr=0.0001, step_size_up=200, step_size_down=200)
+        scheduler = SWALR(optimizer, swa_lr=0.001, anneal_epochs=20)
 
         return {
             "optimizer": optimizer,
@@ -156,5 +173,7 @@ class GCDDDetector(L.LightningModule):
                 "frequency": 1,
                 "strict": True,
                 "name": "cycle_scheduler",
+                "monitor": "map_50"
             }
+
         }

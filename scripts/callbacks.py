@@ -45,7 +45,7 @@ class PredictionWriter(BasePredictionWriter):
         existing_subs = sorted(os.listdir(self.output_dir))
         sub_indices = [int(item.split("_")[-1].split(".")[0])  for item in os.listdir(self.output_dir) if item.startswith("submission")]
         if sub_indices:
-            sub_index = max(sub_indices)
+            sub_index = max(sub_indices)+1
         full_df.to_csv(os.path.join(self.output_dir, f"submission_{sub_index}.csv"), index=False)
 
 class MetricsLogCallback(L.Callback):

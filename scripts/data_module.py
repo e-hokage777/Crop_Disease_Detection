@@ -1,11 +1,12 @@
 import lightning as L
 import pandas as pd
-from torch.utils.data import random_split, DataLoader
+from torch.utils.data import random_split, DataLoader, WeightedRandomSampler
 from datasets import ImageDataset, ImagePredictionDataset
 import torch
 from torchvision.transforms import ToTensor
 from sklearn.model_selection import train_test_split
-
+from _utils import clean_bbox_data
+from collections import Counter
 
 class DetectionDataModule(L.LightningDataModule):
     def __init__(
@@ -39,37 +40,49 @@ class DetectionDataModule(L.LightningDataModule):
 
 
 
-    def _clean_df(self, df):
-        width = df["xmax"] - df["xmin"]
-        height = df["ymax"] - df["ymin"]
-        df = df[(width > 0) & (height > 0)]
-        return df
+    def _clean_train_df(self, df):
+        return clean_bbox_data(df, remove_dups=False, remove_outs=False)
         
     def _split_data(self, df):
-        df_unique = df.drop_duplicates(subset="Image_ID", keep="last", ignore_index=True)
-        train_df, test_val_df = train_test_split(df_unique, test_size=0.3, stratify=df_unique["class"], random_state=self.seed)
-        val_df, test_df = train_test_split(test_val_df, test_size=0.5, stratify=test_val_df["class"], random_state=self.seed)
+        df_unique = df.drop_duplicates(subset="Image_ID", keep="first", ignore_index=True)
+        train_df, test_val_df = train_test_split(df_unique, test_size=0.2, stratify=df_unique["class"], random_state=self.seed)
+        # val_df, test_df = train_test_split(test_val_df, test_size=0.5, stratify=test_val_df["class"], random_state=self.seed)
 
-        train_df = df[df["Image_ID"].isin(train_df["Image_ID"])]
-        val_df = df[df["Image_ID"].isin(val_df["Image_ID"])]
-        test_df = df[df["Image_ID"].isin(test_df["Image_ID"])]
+        train_df = df[df["Image_ID"].isin(train_df["Image_ID"])].reset_index(drop=True)
+        test_val_df = df[df["Image_ID"].isin(test_val_df["Image_ID"])].reset_index(drop=True)
+        # val_df = df[df["Image_ID"].isin(val_df["Image_ID"])]
+        # test_df = df[df["Image_ID"].isin(test_df["Image_ID"])]
 
-        return train_df, val_df, test_df
+        self.df_unique = df_unique
+
+
+        return train_df, test_val_df
+
+    def _get_weighted_sampler(self, dataset):
+        class_counts = Counter(self.label_encoder.transform(self.df_unique["class"]))
+        sample_weights = [0] * len(dataset)
+        
+        for idx, img_label in enumerate(dataset.img_labels):
+            class_idx = self.label_encoder.transform([self.df_unique[self.df_unique["Image_ID"]==img_label]["class"].values[0]])[0]
+            sample_weights[idx]  = 1/class_counts[class_idx]
+
+
+        return WeightedRandomSampler(sample_weights, num_samples=len(sample_weights), replacement=True)
+        
 
 
     def setup(self, stage):
         if stage != "predict":
             df = pd.read_csv(self.annotations_filepath)
-            df = self._clean_df(df)
-            train_df, val_df, test_df = self._split_data(df)
+            train_df, val_test_df = self._split_data(df)
+
+            ## cleaning train data (CLEANING SHOULD ONLY BE DONE ON TRAINING DATA)
+            train_df = self._clean_train_df(train_df)
 
             self.train_dataset = ImageDataset(train_df, self.imgs_path, self.label_encoder, transforms=self.transforms)
-            self.val_dataset = ImageDataset(val_df, self.imgs_path, self.label_encoder, transforms=self.test_transforms)
-            self.test_dataset = ImageDataset(test_df, self.imgs_path, self.label_encoder, transforms=self.test_transforms)
+            self.val_test_dataset = ImageDataset(val_test_df, self.imgs_path, self.label_encoder, transforms=self.test_transforms)
+            self.train_sampler = self._get_weighted_sampler(self.train_dataset)
 
-            # ## to allow testing on train dataset
-            # if stage == "test_on_train":
-            #     self.test_dataset = ImageDataset(train_df, self.imgs_path, self.label_encoder, transforms=self.test_transforms)
 
         ## for preds
         if stage == "predict":
@@ -99,16 +112,17 @@ class DetectionDataModule(L.LightningDataModule):
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
-            shuffle=True,
+            shuffle=False,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             collate_fn=self._collate_wrapper,
             persistent_workers=self.persistent_workers,
+            sampler=self.train_sampler
         )
 
     def val_dataloader(self):
         return DataLoader(
-            self.val_dataset,
+            self.val_test_dataset,
             batch_size=self.batch_size,
             shuffle=False,
             pin_memory=self.pin_memory,
@@ -119,7 +133,7 @@ class DetectionDataModule(L.LightningDataModule):
 
     def test_dataloader(self):
         return DataLoader(
-            self.test_dataset,
+            self.val_test_dataset,
             batch_size=self.batch_size,
             shuffle=False,
             pin_memory=self.pin_memory,

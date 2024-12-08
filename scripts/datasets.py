@@ -26,6 +26,7 @@ class ImageDataset(torch.utils.data.Dataset):
 
         ## getting image names
         self.img_labels = self.df["Image_ID"].unique()
+        self.img_labels = sorted(self.img_labels)
         self.targets = self.process_target()
         self.img_dir = img_dir
 
@@ -44,6 +45,9 @@ class ImageDataset(torch.utils.data.Dataset):
             image, target = self.transforms(image, target)
             # print(image.max(), image.min())
 
+        ## filtering no-area boxes
+        target["boxes"], target["labels"] = self.filter_bounding_boxes(target["boxes"], target["labels"])
+        
         return image, target
 
     def process_target(self):
@@ -57,19 +61,41 @@ class ImageDataset(torch.utils.data.Dataset):
             }
 
             ## taking care of situation where line instead of boxes were drawn
-            for i in range(len(image_map[group_name]["boxes"])):
-                if (
-                    image_map[group_name]["boxes"][i][0]
-                    == image_map[group_name]["boxes"][i][2]
-                ):
-                    image_map[group_name]["boxes"][i][2] += 1
-                if (
-                    image_map[group_name]["boxes"][i][1]
-                    == image_map[group_name]["boxes"][i][3]
-                ):
-                    image_map[group_name]["boxes"][i][3] += 1
+            # for i in range(len(image_map[group_name]["boxes"])):
+            #     if (
+            #         image_map[group_name]["boxes"][i][0]
+            #         == image_map[group_name]["boxes"][i][2]
+            #     ):
+            #         image_map[group_name]["boxes"][i][2] += 1
+            #     if (
+            #         image_map[group_name]["boxes"][i][1]
+            #         == image_map[group_name]["boxes"][i][3]
+            #     ):
+            #         image_map[group_name]["boxes"][i][3] += 1
 
         return image_map
+
+    def filter_bounding_boxes(self, boxes, labels, area_threshold=1e-4):
+        """
+        Filters out bounding boxes with an area below a threshold.
+        
+        Args:
+            boxes (Tensor): Tensor of shape (N, 4), where each row is (x_min, y_min, x_max, y_max).
+            labels (Tensor): Corresponding labels for the boxes.
+            area_threshold (float): Minimum area threshold to keep a box.
+            
+        Returns:
+            filtered_boxes, filtered_labels: Tensors of valid boxes and their labels.
+        """
+        # Compute box areas
+        areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+        
+        # Filter boxes with area greater than the threshold
+        valid_mask = areas > area_threshold
+        filtered_boxes = boxes[valid_mask]
+        filtered_labels = labels[valid_mask]
+        
+        return filtered_boxes, filtered_labels
 
 
 class ImagePredictionDataset(torch.utils.data.Dataset):

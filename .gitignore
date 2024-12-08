@@ -1,6 +1,9 @@
 tb_logs/
 trained_backbones/
 checkpoints/
-__pycache__/
+__pycache__
+.ipynb_checkpoints/
 *.pyc
 images/
+misc/
+
