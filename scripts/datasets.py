@@ -35,8 +35,8 @@ class ImageDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.img_labels[idx])
-        # image = read_image(img_path)
-        image = decode_image(img_path)
+        image = read_image(img_path)
+        # image = decode_image(img_path)
 
         target = self.targets[self.img_labels[idx]].copy()
         
