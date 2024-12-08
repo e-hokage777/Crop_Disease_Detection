@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import numpy as np
 from torchvision import tv_tensors
-from torchvision.io import decode_image
+from torchvision.io import decode_image, read_image
 
 
 ## DataLoader for loading images for detection
@@ -35,7 +35,8 @@ class ImageDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.img_labels[idx])
-        image = decode_image(img_path)
+        image = read_image(img_path)
+        # image = decode_image(img_path)
 
         target = self.targets[self.img_labels[idx]].copy()
         
