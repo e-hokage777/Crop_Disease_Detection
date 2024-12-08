@@ -36,36 +36,35 @@ class GCDDDetector(L.LightningModule):
 
 
     def _detector_setup(self, num_classes):
-        # backbone = _mobilenet_extractor(backbone, True, 3)
-        # detector = fasterrcnn_mobilenet_v3_large_fpn(
-        #     weights = FasterRCNN_MobileNet_V3_Large_FPN_Weights.DEFAULT,
-        #     min_size=1024,
-        #     backbone_weights=backbone_weights
-        #     # box_roi_pool = MultiScaleRoIAlign(featmap_names=["0", "1", "2", "3"], output_size=14, sampling_ratio=2)
-        #     # box_score_thresh=0.3
-        #     # bbox_reg_weights=(15.0, 15.0, 5.0, 5.0)
-        # )
+        detector = fasterrcnn_mobilenet_v3_large_fpn(
+            weights = FasterRCNN_MobileNet_V3_Large_FPN_Weights.DEFAULT,
+            min_size=1024,
+            backbone_weights=backbone_weights
+            # box_roi_pool = MultiScaleRoIAlign(featmap_names=["0", "1", "2", "3"], output_size=14, sampling_ratio=2)
+            # box_score_thresh=0.3
+            # bbox_reg_weights=(15.0, 15.0, 5.0, 5.0)
+        )
 
-        # # Get the input features for the classifier
-        # in_features = detector.roi_heads.box_predictor.cls_score.in_features
+        # Get the input features for the classifier
+        in_features = detector.roi_heads.box_predictor.cls_score.in_features
 
-        # # Replace the head with a new one (with the correct number of classes)
-        # detector.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+        # Replace the head with a new one (with the correct number of classes)
+        detector.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
         ## generating anchors
-        anchor_generator = AnchorGenerator(sizes=config.ANCHOR_SIZES, aspect_ratios=config.ANCHOR_RATIOS)
+        # anchor_generator = AnchorGenerator(sizes=config.ANCHOR_SIZES, aspect_ratios=config.ANCHOR_RATIOS)
 
-        ## getting backbone
-        backbone = mobilenet_v3_large()
-        backbone.features.load_state_dict(torch.load(config.BACKBONE_LOAD_PATH, map_location="cpu", weights_only=True))
-        backbone = _mobilenet_extractor(backbone, True, 3)
+        # ## getting backbone
+        # backbone = mobilenet_v3_large()
+        # backbone.features.load_state_dict(torch.load(config.BACKBONE_LOAD_PATH, map_location="cpu", weights_only=True))
+        # backbone = _mobilenet_extractor(backbone, True, 3)
 
-        detector = FasterRCNN(
-            backbone,
-            num_classes=num_classes,
-            rpn_anchor_generator=anchor_generator,
-            min_size=1024
-        )
+        # detector = FasterRCNN(
+        #     backbone,
+        #     num_classes=num_classes,
+        #     rpn_anchor_generator=anchor_generator,
+        #     min_size=1024
+        # )
         
         # custom MOBILENETV3
         # returned_layers = [2,3,4,5]
