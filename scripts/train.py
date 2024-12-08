@@ -27,7 +27,8 @@ if __name__ == "__main__":
     parser.add_argument("--max_epochs", type=int, default=20)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--persistent_workers", action="store_true", default=False)
-    parser.add_argument("--pin_memory", action="store_true", default=True)
+    parser.add_argument("--pin_memory", action="store_true", dest="pin_memory", default=True)
+    parser.add_argument("--no_pin_memory", dest="pin_memory", action="store_false", help="Disable pin_memory")
 
     ## run args
     parser.add_argument("--mode", type=str, default="train")

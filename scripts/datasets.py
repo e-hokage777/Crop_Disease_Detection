@@ -35,8 +35,8 @@ class ImageDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.img_labels[idx])
-        image = read_image(img_path)
-        # image = decode_image(img_path)
+        # image = read_image(img_path)
+        image = decode_image(img_path)
 
         target = self.targets[self.img_labels[idx]].copy()
         
@@ -61,19 +61,7 @@ class ImageDataset(torch.utils.data.Dataset):
                 "labels": torch.from_numpy(group_df["class"].values.astype(np.int64)),
             }
 
-            ## taking care of situation where line instead of boxes were drawn
-            # for i in range(len(image_map[group_name]["boxes"])):
-            #     if (
-            #         image_map[group_name]["boxes"][i][0]
-            #         == image_map[group_name]["boxes"][i][2]
-            #     ):
-            #         image_map[group_name]["boxes"][i][2] += 1
-            #     if (
-            #         image_map[group_name]["boxes"][i][1]
-            #         == image_map[group_name]["boxes"][i][3]
-            #     ):
-            #         image_map[group_name]["boxes"][i][3] += 1
-
+        
         return image_map
 
     def filter_bounding_boxes(self, boxes, labels, area_threshold=1e-4):
