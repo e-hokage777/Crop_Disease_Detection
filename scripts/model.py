@@ -20,7 +20,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau, CyclicLR
 from torchvision.models import mobilenet_v3_large, mobilenet_v3_small, MobileNet_V3_Large_Weights, efficientnet_b3, EfficientNet_B3_Weights
 from torchvision.models.detection.backbone_utils import _mobilenet_extractor
 from torch.optim.swa_utils import SWALR
-from ultralytics import YOLO
 
 
 class GCDDDetector(L.LightningModule):
