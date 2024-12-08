@@ -39,7 +39,6 @@ class GCDDDetector(L.LightningModule):
         detector = fasterrcnn_mobilenet_v3_large_fpn(
             weights = FasterRCNN_MobileNet_V3_Large_FPN_Weights.DEFAULT,
             min_size=1024,
-            backbone_weights=backbone_weights
             # box_roi_pool = MultiScaleRoIAlign(featmap_names=["0", "1", "2", "3"], output_size=14, sampling_ratio=2)
             # box_score_thresh=0.3
             # bbox_reg_weights=(15.0, 15.0, 5.0, 5.0)
