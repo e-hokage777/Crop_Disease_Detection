@@ -14,12 +14,16 @@ from argparse import ArgumentParser
 if __name__ == "__main__":
     ## getting scripts arguments
     parser = ArgumentParser()
+    
     ## training args
     parser.add_argument("--accelerator", type=str, default="gpu")
     parser.add_argument("--devices", type=int, default=1)
     parser.add_argument("--learning_rate", type=float, default=0.02)
     parser.add_argument("--precision", type=str, default="16-mixed")
     parser.add_argument("--accum_grad_batches", type=int, default=4)
+    parser.add_argument("--limit_test_batches", type=float, default=1.0)
+    parser.add_argument("--limit_train_batches", type=float, default=1.0)
+    parser.add_argument("--benchmark", action="store_true", default=False)
 
     ## data args
     parser.add_argument("--batch_size", type=int, default=8)
@@ -36,6 +40,7 @@ if __name__ == "__main__":
     parser.add_argument("--fast_dev_run", action="store_true", default=False)
     parser.add_argument("--load_checkpoint", action="store_true", default=False)
     parser.add_argument("--checkpoint_path", type=str, default=config.CHECKPOINT_LOAD_PATH)
+    
 
     args = parser.parse_args()
     
@@ -73,16 +78,13 @@ if __name__ == "__main__":
         model = GCDDDetector.load_from_checkpoint(config.CHECKPOINT_LOAD_PATH,
                                                   num_classes=num_classes,
                                                   learning_rate=args.learning_rate,
-                                                  # trainable_backbone_layers=config.TRAINABLE_BACKBONE_LAYERS
                                                  )
         print("CHECKPOINT LOADED")
     else:
         model = GCDDDetector(num_classes,
                              learning_rate=args.learning_rate
-                             # trainable_backbone_layers=config.TRAINABLE_BACKBONE_LAYERS
                             )
         print("NO CHECKPOINT BEING USED")
-    # model = torch.compile(model, dynamic=True)
 
     
     trainer = L.Trainer(
@@ -90,12 +92,15 @@ if __name__ == "__main__":
         accelerator=args.accelerator,
         devices=args.devices,
         strategy=config.MULTI_GPU_STRATEGY,
+        benchmark=args.benchmark,
         min_epochs=args.min_epochs,
         max_epochs=args.max_epochs,
         precision=args.precision,
         callbacks=get_callbacks(),
         logger=logger,
-        fast_dev_run=args.fast_dev_run,        
+        fast_dev_run=args.fast_dev_run,
+        limit_train_batches=args.limit_train_batches,
+        limit_test_batches=args.limit_test_batches,
     )
 
     ##
@@ -105,7 +110,6 @@ if __name__ == "__main__":
         raise Exception("Please provide a system argument--train/test/validate. eg. pythong train.py [train/validate/test]")
 
     if mode == "train":
-        # print(f"TRAINING MODEL AT LEARNING RATE OF: {args.learning_rate}")
         trainer.fit(model, data_module)
     elif mode == "validate":
         trainer.validate(model, data_module)

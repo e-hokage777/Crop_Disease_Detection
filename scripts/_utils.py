@@ -24,10 +24,8 @@ def get_file_dir():
 def get_transforms():
     return T.Compose([
         T.ToImage(),
-        # T.ColorJitter(brightness=(0.8, 1.2), contrast=(0.8, 1.2), hue=(-0.1, 0.1)),
         T.RandomHorizontalFlip(),
         T.RandomVerticalFlip(),
-        # T.RandomApply(torch.nn.ModuleList([T.RandomResizedCrop(640, scale=(0.1,1), antialias=True)])),
         T.ClampBoundingBoxes(),
         T.SanitizeBoundingBoxes(),
         T.ToDtype(torch.float32, scale=True),

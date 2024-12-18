@@ -46,12 +46,9 @@ class DetectionDataModule(L.LightningDataModule):
     def _split_data(self, df):
         df_unique = df.drop_duplicates(subset="Image_ID", keep="first", ignore_index=True)
         train_df, test_val_df = train_test_split(df_unique, test_size=0.2, stratify=df_unique["class"], random_state=self.seed)
-        # val_df, test_df = train_test_split(test_val_df, test_size=0.5, stratify=test_val_df["class"], random_state=self.seed)
 
         train_df = df[df["Image_ID"].isin(train_df["Image_ID"])].reset_index(drop=True)
         test_val_df = df[df["Image_ID"].isin(test_val_df["Image_ID"])].reset_index(drop=True)
-        # val_df = df[df["Image_ID"].isin(val_df["Image_ID"])]
-        # test_df = df[df["Image_ID"].isin(test_df["Image_ID"])]
 
         self.df_unique = df_unique
 
@@ -60,12 +57,13 @@ class DetectionDataModule(L.LightningDataModule):
 
     def _get_weighted_sampler(self, dataset):
         class_counts = Counter(self.label_encoder.transform(self.df_unique["class"]))
+
+        
         sample_weights = [0] * len(dataset)
         
         for idx, img_label in enumerate(dataset.img_labels):
             class_idx = self.label_encoder.transform([self.df_unique[self.df_unique["Image_ID"]==img_label]["class"].values[0]])[0]
             sample_weights[idx]  = 1/class_counts[class_idx]
-
 
         return WeightedRandomSampler(sample_weights, num_samples=len(sample_weights), replacement=True)
         
@@ -92,18 +90,25 @@ class DetectionDataModule(L.LightningDataModule):
                 transforms=self.test_transforms,
             )
 
-    def _collate_wrapper(self, batch):
-        images, targets = list(zip(*batch))
-        images = list(images)
-        targets = list(targets)
+    def _collate_wrapper(self, transforms=None):
+        def func(batch):
+            images, targets = list(zip(*batch))
+            images = list(images)
+            targets = list(targets)
+    
+            if torch.cuda.is_available() and self.pin_memory:
+                for i in range(len(images)):
+                    images[i] = images[i].pin_memory()
+                    targets[i]["boxes"] = targets[i]["boxes"].pin_memory()
+                    targets[i]["labels"] = targets[i]["labels"].pin_memory()
+    
+            if transforms:
+                print("here")
+                return transforms(images, targets)
+    
+            return images, targets
 
-        if torch.cuda.is_available() and self.pin_memory:
-            for i in range(len(images)):
-                images[i] = images[i].pin_memory()
-                targets[i]["boxes"] = targets[i]["boxes"].pin_memory()
-                targets[i]["labels"] = targets[i]["labels"].pin_memory()
-
-        return images, targets
+        return func
 
     def _pred_collate_wrapper(self, batch):
         return list(zip(*batch))
@@ -115,7 +120,7 @@ class DetectionDataModule(L.LightningDataModule):
             shuffle=False,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
-            collate_fn=self._collate_wrapper,
+            collate_fn=self._collate_wrapper(),
             persistent_workers=self.persistent_workers,
             sampler=self.train_sampler
         )
@@ -127,7 +132,7 @@ class DetectionDataModule(L.LightningDataModule):
             shuffle=False,
             pin_memory=self.pin_memory,
             num_workers=self.num_workers,
-            collate_fn=self._collate_wrapper,
+            collate_fn=self._collate_wrapper(),
             persistent_workers=self.persistent_workers,
         )
 
@@ -138,7 +143,7 @@ class DetectionDataModule(L.LightningDataModule):
             shuffle=False,
             pin_memory=self.pin_memory,
             num_workers=self.num_workers,
-            collate_fn=self._collate_wrapper,
+            collate_fn=self._collate_wrapper(),
             persistent_workers=self.persistent_workers,
         )
 

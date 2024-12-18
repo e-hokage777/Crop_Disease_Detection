@@ -12,7 +12,7 @@ TRAIN_PRECISION="16-mixed"
 NMS_THRESH = 0.5 ## threshold for non-max suppression
 ACCUM_GRAD_BATCHES = 4
 ## detector
-ANCHOR_SIZES = ((32,64,128,256,512,),) * 3
+ANCHOR_SIZES = ((32,64,128,256,512,),) * 1
 ANCHOR_RATIOS = ((0.5, 1.0, 2.0),) * len(ANCHOR_SIZES)
 
 TRAINABLE_BACKBONE_LAYERS = 3
@@ -32,9 +32,12 @@ PERSISTENT_WORKERS=False
 LOGS_PATH = os.path.join(get_file_dir(), "../tb_logs")
 CHECKPOINT_SAVEPATH = os.path.join(get_file_dir(), "../checkpoints")
 
-CHECKPOINT_LOAD_PATH = os.path.join(get_file_dir(), "../checkpoints/epoch-epoch=00_map@50=map_50=0.31.ckpt")
+CHECKPOINT_LOAD_PATH = os.path.join(get_file_dir(), "../checkpoints/epoch-epoch=00_map@50=map_50=0.39-v5.ckpt")
 # CHECKPOINT_LOAD_PATH = None
 SEED=42
+
+## metrics
+METRICS_SAVE_PATH = os.path.join(get_file_dir(), "../metrics/map_per_class.csv")
 
 ## submissions
 SUBMISSION_PATH = os.path.join(get_file_dir(), "../submissions")

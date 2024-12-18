@@ -6,20 +6,21 @@ import config
 import os
 import pandas as pd
 
-## callback for getting 
+## callback for getting map stats
 class ClassMAPDispCallback(L.Callback):
+    def __init__(self, save_path=None):
+        self.save_path = save_path
     def _map_per_class_dict(self, map_dict, encoder):
         holder = {}
         classes = encoder.inverse_transform(map_dict["classes"].numpy())
 
         for i in range(len(classes)):
-            holder[classes[i]] = map_dict["map_per_class"][i]
+            holder[classes[i]] = map_dict["map_per_class"][i].item()
 
         return holder
         
     def on_test_epoch_end(self, trainer, pl_module):
         map = pl_module.map_alt.compute()
-        # map["classes_found"] = len(map["classes"])
         map_per_class_dict = self._map_per_class_dict(map, trainer.datamodule.label_encoder)
         self.log_dict({
             "map": map["map"],
@@ -32,6 +33,12 @@ class ClassMAPDispCallback(L.Callback):
             "num_classes": len(map["classes"])
         })
         self.log_dict(map_per_class_dict)
+
+        if self.save_path:
+            pd.Series(map_per_class_dict, name="map").to_csv(self.save_path)
+            
+
+        
 
 class PredictionWriter(BasePredictionWriter):
     def __init__(self, output_dir, write_interval):
@@ -89,11 +96,11 @@ def get_callbacks(checkpoint_monitor="map_50"):
             filename="epoch-{epoch:02d}_map@50={map_50:.2f}",
         )
         callbacks.append(checkpoint_callback)
-        callbacks.append(RichProgressBar())
-        callbacks.append(ClassMAPDispCallback())
-        callbacks.append(PredictionWriter(config.SUBMISSION_PATH, write_interval="epoch"))
-        callbacks.append(LearningRateMonitor(logging_interval="step"))
-        callbacks.append(MetricsLogCallback(metrics=["cycle_scheduler"]))
-        # callbacks.append(StochasticWeightAveraging(swa_lrs=0.001, swa_epoch_start=1, annealing_epochs=3))
+        
+    callbacks.append(RichProgressBar())
+    callbacks.append(ClassMAPDispCallback(save_path=config.METRICS_SAVE_PATH))
+    callbacks.append(PredictionWriter(config.SUBMISSION_PATH, write_interval="epoch"))
+    callbacks.append(LearningRateMonitor(logging_interval="step"))
+    callbacks.append(MetricsLogCallback(metrics=["cycle_scheduler"]))
 
     return callbacks
