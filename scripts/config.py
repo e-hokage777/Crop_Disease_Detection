@@ -32,7 +32,7 @@ PERSISTENT_WORKERS=False
 LOGS_PATH = os.path.join(get_file_dir(), "../tb_logs")
 CHECKPOINT_SAVEPATH = os.path.join(get_file_dir(), "../checkpoints")
 
-CHECKPOINT_LOAD_PATH = os.path.join(get_file_dir(), "../checkpoints/epoch-epoch=00_map@50=map_50=0.39-v5.ckpt")
+CHECKPOINT_LOAD_PATH = os.path.join(get_file_dir(), "../model/fcnn_crop_disease_statedict.ckpt")
 # CHECKPOINT_LOAD_PATH = None
 SEED=42
 

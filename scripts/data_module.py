@@ -7,6 +7,7 @@ from torchvision.transforms import ToTensor
 from sklearn.model_selection import train_test_split
 from _utils import clean_bbox_data
 from collections import Counter
+import multiprocessing
 
 class DetectionDataModule(L.LightningDataModule):
     def __init__(
@@ -122,7 +123,7 @@ class DetectionDataModule(L.LightningDataModule):
             pin_memory=self.pin_memory,
             collate_fn=self._collate_wrapper(),
             persistent_workers=self.persistent_workers,
-            sampler=self.train_sampler
+            sampler=self.train_sampler,
         )
 
     def val_dataloader(self):

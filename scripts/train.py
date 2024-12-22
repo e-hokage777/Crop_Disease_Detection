@@ -3,6 +3,7 @@ from model import GCDDDetector
 from data_module import DetectionDataModule
 from callbacks import get_callbacks
 import config
+import _utils
 import torch
 import os
 from _utils import get_labelencoder, get_transforms, get_test_transforms, get_num_classes
@@ -40,14 +41,15 @@ if __name__ == "__main__":
     parser.add_argument("--fast_dev_run", action="store_true", default=False)
     parser.add_argument("--load_checkpoint", action="store_true", default=False)
     parser.add_argument("--checkpoint_path", type=str, default=config.CHECKPOINT_LOAD_PATH)
-    
+    parser.add_argument("--images", nargs='+', help='Images to detect')
+    parser.add_argument("--pred_annot_path", type=str, default=config.PRED_ANNOT_FILEPATH)
 
     args = parser.parse_args()
     
     ## getting paths
     annot_filepath = os.environ.get("GCDD_ANNOT_FILEPATH") or config.ANNOT_FILEPATH
     pred_annot_filepath = (
-        os.environ.get("GCDD_PRED_ANNOT_FILEPATH") or config.PRED_ANNOT_FILEPATH
+        os.environ.get("GCDD_PRED_ANNOT_FILEPATH") or args.pred_annot_path
     )
 
     logs_path = os.environ.get("GCDD_LOGS_PATH") or config.LOGS_PATH
@@ -107,7 +109,7 @@ if __name__ == "__main__":
     try:
         mode = args.mode
     except:
-        raise Exception("Please provide a system argument--train/test/validate. eg. pythong train.py [train/validate/test]")
+        raise Exception("Please provide a system argument--train/test/validate/predict/predict_from_csv. eg. pythong train.py [train/validate/test]")
 
     if mode == "train":
         trainer.fit(model, data_module)
@@ -119,5 +121,12 @@ if __name__ == "__main__":
             trainer.test(model, datamodule=data_module)
         else:
             trainer.test(model, data_module)
-    elif mode == "predict":
+    elif mode == "predict_from_csv":
+        print("Note: Add --load_checkpoint flag to make use of pretrained weights")
         trainer.predict(model, data_module)
+    elif mode == "predict":
+        print("Note: Add --load_checkpoint flag to make use of pretrained weights")
+        if not args.images:
+            raise Exception("Images not specified with --images argument")
+
+        print(_utils.predict(model, args.images, get_test_transforms(), get_labelencoder(annot_filepath, "class")))

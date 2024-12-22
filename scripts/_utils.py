@@ -7,6 +7,7 @@ import torch
 import torchvision
 from torchvision.io import decode_image
 from class_encoder import ClassEncoder
+from torchvision.io import read_image
 
 def get_num_classes(filepath, column):
     return pd.read_csv(filepath)[column].nunique() + 1
@@ -92,3 +93,24 @@ def clean_bbox_data(df, remove_dups=False, remove_outs=False):
     return df
 
 
+def predict(model, img_paths, inference_transforms, encoder):
+    model.eval() ## prepping model for prediction
+    images = []
+    for img_path in img_paths:
+        image = read_image(img_path)
+        image = inference_transforms(image)
+        images.append(image)
+        
+    with torch.no_grad():
+        preds = model(images)
+
+    results = []
+    for path, pred in zip(img_paths, preds):
+        boxes = pred["boxes"].cpu().numpy()
+        scores = pred["scores"].cpu().numpy()
+        labels = pred["labels"].cpu().numpy()
+        labels = encoder.inverse_transform(labels)
+
+        results.append({"image": path,"boxes": boxes, "labels": labels, "scores": scores})
+
+    return results
